@@ -48,7 +48,7 @@ class EffectListTest extends SpecificationWithJUnit with Mockito {
       val nList = aBigList.addEffect(combB, badCondition, Duration.SaveEnd)
       (nList.effects filterNot (aBigList.effects contains)).length must_== 1
       val newEntry = getFirstNewEffect(aBigList, nList)
-      (aBigList.effects must not be have[Effect](e => e.effectId == newEntry.effectId))
+      (aBigList.effects must not contain ((e: Effect) => e.effectId == newEntry.effectId))
     }
 
     "replace a temporary mark by a new mark" in {
@@ -76,13 +76,13 @@ class EffectListTest extends SpecificationWithJUnit with Mockito {
     "replace a Stance duration if found" in {
       val nList = aBigList.addEffect(combA, goodCondition, Duration.Stance)
       val newEntry = getFirstNewEffect(aBigList, nList)
-      nList.effects must not be have[Effect](e => e.duration == Duration.Stance && e.effectId != newEntry.effectId)
+      nList.effects must not contain ((e: Effect) => e.duration == Duration.Stance && e.effectId != newEntry.effectId)
     }
 
     "replace a Rage duration if in list" in {
       val nList = aBigList.addEffect(combA, goodCondition, Duration.Rage)
       val newEntry = getFirstNewEffect(aBigList, nList)
-      nList.effects must not be have[Effect](e => e.duration == Duration.Rage && e.effectId != newEntry.effectId)
+      nList.effects must not contain ((e: Effect) => e.duration == Duration.Rage && e.effectId != newEntry.effectId)
     }
 
     "apply transformation to all elements" in {

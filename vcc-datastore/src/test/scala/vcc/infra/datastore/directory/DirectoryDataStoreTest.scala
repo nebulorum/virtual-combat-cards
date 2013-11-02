@@ -48,7 +48,7 @@ class DirectoryDataStoreTest extends DataStoreSpec {
 
   "DirectoryDataStore on a test directory" should {
     "have list all bad files" in new storeContext {
-      aDataStore.enumerateEntities() must haveTheSameElementsAs(badTestEntity)
+      aDataStore.enumerateEntities() must containAllOf(badTestEntity)
     }
     for (eid <- badTestEntity) {
       ("process " + eid.asStorageString) in new storeContext {

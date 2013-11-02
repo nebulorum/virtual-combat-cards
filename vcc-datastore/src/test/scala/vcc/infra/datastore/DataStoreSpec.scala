@@ -115,7 +115,7 @@ abstract class DataStoreSpec extends SpecificationWithJUnit {
       rc must beTrue
       val newSet = aDataStore.enumerateEntities()
       newSet must contain(eid1)
-      newSet must not contain (eid3)
+      newSet must not contain eid3
     }
 
     "store another entity" in new dataStoreContext {
@@ -124,7 +124,7 @@ abstract class DataStoreSpec extends SpecificationWithJUnit {
       rc must beTrue
       val newSet = aDataStore.enumerateEntities()
       newSet must contain(eid2)
-      newSet must not contain (eid3)
+      newSet must not contain eid3
     }
 
     "must restore a saved entity" in new dataStoreContext {
@@ -133,7 +133,7 @@ abstract class DataStoreSpec extends SpecificationWithJUnit {
       val ent = aDataStore.loadEntity(eid1)
       ent must not beNull;
       ent.eid must_== eid1
-      ent.data must haveTheSameElementsAs(baseData)
+      ent.data must havePairs(baseData.toSeq: _*)
     }
 
     "have non zero time stamp" in new dataStoreContext {
@@ -168,8 +168,8 @@ abstract class DataStoreSpec extends SpecificationWithJUnit {
       map must haveKey(eid1)
       map must haveKey(eid2)
       map must not be haveKey(eid3)
-      map(eid1) must haveTheSameElementsAs(Map("name" -> "monster"))
-      map(eid2) must haveTheSameElementsAs(Map("name" -> "other", "hp" -> "44"))
+      map(eid1) must havePair("name" -> "monster")
+      map(eid2) must havePairs("name" -> "other", "hp" -> "44")
     }
 
     "remove an entity" in new dataStoreContext {

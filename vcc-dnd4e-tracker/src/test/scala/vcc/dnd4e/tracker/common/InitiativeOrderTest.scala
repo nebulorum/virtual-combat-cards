@@ -49,10 +49,12 @@ class InitiativeOrderTest extends SpecificationWithJUnit with CommonCombatantID 
 
     "add a simple InitiativeDefinition to the order" in new emptyOrder {
       val nOrder = order.setInitiative(InitiativeDefinition(combA, 10, List(3)))
+
+      def resultWithID(io: InitiativeOrderID) = be_==(io) ^^ {ir: InitiativeResult => ir.uniqueId}
       nOrder.sequence must_== List(ioA0)
       nOrder.tracker must beDefinedAt(ioA0)
       nOrder.tracker(ioA0) must_== InitiativeTracker(ioA0, 0, 3, InitiativeState.Waiting)
-      nOrder.baseList must have(ir => ir.uniqueId == ioA0)
+      nOrder.baseList must contain(resultWithID(ioA0))
       nOrder.baseList.length must_== 1
     }
 
@@ -137,8 +139,8 @@ class InitiativeOrderTest extends SpecificationWithJUnit with CommonCombatantID 
       val nOrder = order.removeCombatant(combA)
       nOrder.tracker must not(haveKey(ioA0))
       nOrder.tracker must not(haveKey(ioA1))
-      nOrder.sequence must not contain (ioA0)
-      nOrder.sequence must not contain (ioA1)
+      nOrder.sequence must not contain ioA0
+      nOrder.sequence must not contain ioA1
       nOrder.baseList.exists((x: InitiativeResult) => x.uniqueId.combId == combA) must beFalse
     }
 
