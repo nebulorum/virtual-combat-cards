@@ -58,7 +58,8 @@ class StateFormatterTest extends SpecificationWithJUnit with SampleStateData wit
     SetInitiativeCommand(InitiativeDefinition(combB, 1, List(5))),
     SetInitiativeCommand(InitiativeDefinition(comb1, 2, List(7))),
     StartCombatCommand,
-    DamageCommand(combB, 10),
+    AddDamageIndicationCommand(combB, 10),
+    ApplyDamageCommand,
     SetTemporaryHPCommand(combB, 6)
   )
 
@@ -68,15 +69,15 @@ class StateFormatterTest extends SpecificationWithJUnit with SampleStateData wit
     StartCombatCommand)
 
   val bigStateWithDead = bigStateCommands ++ Seq(
-    DamageCommand(combB, 100),
-    DamageCommand(comb1, 100)
+    AddDamageIndicationCommand(combB, 100), ApplyDamageCommand,
+    AddDamageIndicationCommand(comb1, 100), ApplyDamageCommand
   )
 
   val stateWithEffect = bigStateCommands ++ Seq(
-    AddEffectCommand(comb1, comb1, Condition.Generic("Regen 10", true), Duration.EndOfEncounter),
-    AddEffectCommand(comb1, combA, Condition.Generic("Slowed", false), Duration.RoundBound(ioA0, Duration.Limit.EndOfNextTurn)),
-    AddEffectCommand(combA, combA, Condition.Generic("Regen 2", true), Duration.Stance),
-    AddEffectCommand(combA, comb1, Condition.Generic("Immobilized", false), Duration.SaveEnd)
+    AddEffectCommand(comb1, comb1, Condition.Generic("Regen 10", beneficial = true), Duration.EndOfEncounter),
+    AddEffectCommand(comb1, combA, Condition.Generic("Slowed", beneficial = false), Duration.RoundBound(ioA0, Duration.Limit.EndOfNextTurn)),
+    AddEffectCommand(combA, combA, Condition.Generic("Regen 2", beneficial = true), Duration.Stance),
+    AddEffectCommand(combA, comb1, Condition.Generic("Immobilized", beneficial = false), Duration.SaveEnd)
   )
 
   val finalState = buildState(bigStateCommands)

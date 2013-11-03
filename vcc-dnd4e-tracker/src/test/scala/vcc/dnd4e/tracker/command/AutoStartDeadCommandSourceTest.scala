@@ -127,7 +127,8 @@ class AutoStartDeadCommandSourceTest extends SpecificationWithJUnit with EventSo
     val state = runCommands(getInitialState,
       StartRoundCommand(io1_0),
       DelayCommand(io1_0),
-      DamageCommand(comb1, 1000))
+      AddDamageIndicationCommand(comb1, 1000),
+      ApplyDamageCommand)
     startNextCommandStream.get(state) must_== Some(StartRoundCommand(io2_0), startNextCommandStream)
   }
 
@@ -146,7 +147,8 @@ class AutoStartDeadCommandSourceTest extends SpecificationWithJUnit with EventSo
       DelayCommand(io1_0),
       StartRoundCommand(io2_0),
       DelayCommand(io2_0),
-      DamageCommand(comb2, 1000))
+      AddDamageIndicationCommand(comb2, 1000),
+      ApplyDamageCommand)
     startNextCommandStream.get(state) must_== Some(NextUpCommand(ioB0, List(io1_0)), startNextCommandStream)
   }
 
@@ -159,7 +161,7 @@ class AutoStartDeadCommandSourceTest extends SpecificationWithJUnit with EventSo
       trans = step.get._1 :: trans
       if(step.get._1.isInstanceOf[NextUpCommand])
         return (nState, trans.reverse)
-      step = (step.get._2).get(nState)
+      step = step.get._2.get(nState)
     }
     (nState, trans.reverse)
   }

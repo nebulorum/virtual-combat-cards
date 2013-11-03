@@ -38,25 +38,34 @@ abstract class HealthCommand(target: CombatantID) extends CombatStateCommand {
   }
 }
 
-/**
- * Applies damage to a combatant and ends combat if all combatants in the initiative order are dead.
- * @param target Target of damage
- * @param amount How many hit points to take away.
- */
-case class DamageCommand(target: CombatantID, amount: Int) extends CombatStateCommand {
-
-  def generateEvents(iState: CombatState): List[Event[CombatState]] = {
-    if (!iState.roster.isDefinedAt(target))
+case class AddDamageIndicationCommand(target: CombatantID, amount: Int) extends CombatStateCommand {
+  def generateEvents(state: CombatState): List[Event[CombatState]] = {
+    if (!state.roster.isDefinedAt(target))
       throw new IllegalActionException("Combatant " + target + " not in combat")
 
+    List(SetDamageIndicationEvent(target, amount))
+  }
+}
+
+/**
+ * Applies damage indication in state to a combatant and ends combat if all
+ * combatants in the initiative order are dead.
+ */
+case object ApplyDamageCommand extends CombatStateCommand {
+
+  def generateEvents(iState: CombatState): List[Event[CombatState]] = {
+    if (iState.damageIndication.isEmpty)
+      throw new IllegalStateException("No damage indication present")
+
     // We need to check if all combatant are after we apply damage
-    val damageEvent = ApplyDamageEvent(target, amount)
+    val di = iState.damageIndication.get
+    val damageEvent = ApplyDamageEvent(di.target, di.amount)
     val nState = damageEvent.transition(iState)
 
     if (nState.rules.areAllCombatantInOrderDead(nState)) {
-      damageEvent :: EndCombatEvent :: Nil
+      damageEvent :: ClearDamageIndicationEvent :: EndCombatEvent :: Nil
     } else {
-      damageEvent :: Nil
+      damageEvent :: ClearDamageIndicationEvent :: Nil
     }
   }
 }

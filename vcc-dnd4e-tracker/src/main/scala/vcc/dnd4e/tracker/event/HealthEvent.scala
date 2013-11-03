@@ -17,7 +17,7 @@ package vcc.dnd4e.tracker.event
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-import vcc.dnd4e.tracker.common.{HealthTracker, CombatState, CombatantID}
+import vcc.dnd4e.tracker.common.{DamageIndication, HealthTracker, CombatState, CombatantID}
 
 abstract class HealthEvent extends CombatStateEvent {
   val target: CombatantID
@@ -25,6 +25,21 @@ abstract class HealthEvent extends CombatStateEvent {
   protected def transitionHealth(ht: HealthTracker): HealthTracker
 
   def transition(iState: CombatState): CombatState = iState.lensFactory.combatantHealth(target).modIfChanged(iState, ht => transitionHealth(ht))
+}
+
+case class SetDamageIndicationEvent(target: CombatantID, amount: Int) extends CombatStateEvent {
+  def transition(iState: CombatState): CombatState =
+    iState.copy(damageIndication = Some(DamageIndication(target, amount)))
+}
+
+case object ClearDamageIndicationEvent extends CombatStateEvent {
+  def transition(iState: CombatState): CombatState =
+    iState.copy(damageIndication = None)
+}
+
+case class AlterDamageIndicationEvent(f: Int => Int) extends CombatStateEvent {
+  def transition(iState: CombatState): CombatState =
+    iState.copy(damageIndication = iState.damageIndication.map(di => di.copy(amount = f(di.amount))))
 }
 
 case class ApplyDamageEvent(target: CombatantID, amount: Int) extends HealthEvent {

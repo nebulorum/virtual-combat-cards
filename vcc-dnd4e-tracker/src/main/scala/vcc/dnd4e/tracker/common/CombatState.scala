@@ -18,7 +18,10 @@ package vcc.dnd4e.tracker.common
 
 import vcc.tracker.Event
 
-case class CombatState(roster: Roster[Combatant], order: InitiativeOrder, comment: Option[String]) {
+case class DamageIndication(target: CombatantID, amount: Int)
+
+case class CombatState(roster: Roster[Combatant], order: InitiativeOrder, comment: Option[String],
+                       damageIndication: Option[DamageIndication]) {
   def endCombat(): CombatState = {
     this.copy(order = order.endCombat())
   }
@@ -37,10 +40,10 @@ case class CombatState(roster: Roster[Combatant], order: InitiativeOrder, commen
 
   def lensFactory: StateLensFactory = StateLensFactory
 
-  def getAllEffects:List[Effect] = roster.entries.values.flatMap(_.effects.effects).toList
+  def getAllEffects: List[Effect] = roster.entries.values.flatMap(_.effects.effects).toList
 
 
-  def combatant(cid: CombatantID):Combatant = roster.combatant(cid)
+  def combatant(cid: CombatantID): Combatant = roster.combatant(cid)
 
   def combatantViewFromID(id: CombatantID): Combatant = roster.entries(id)
 
@@ -109,6 +112,6 @@ object CombatState {
 
   }
 
-  def empty = CombatState(Roster(Combatant.RosterFactory, Map()), InitiativeOrder.empty(), None)
+  def empty = CombatState(Roster(Combatant.RosterFactory, Map()), InitiativeOrder.empty(), None, None)
 
 }

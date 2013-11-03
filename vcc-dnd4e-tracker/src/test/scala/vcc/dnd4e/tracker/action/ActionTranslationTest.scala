@@ -26,7 +26,7 @@ import vcc.tracker.{Action, Command, SeqCommandStream}
 
 class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData {
   private val eid = EffectID(combA, 0)
-  private val someCondition = Condition.Generic("good", true)
+  private val someCondition = Condition.Generic("good", beneficial = true)
   private val someDuration = Duration.EndOfEncounter
   private val rd1 = CombatantRosterDefinition(null, "alias", entityMonster)
   private val rd2 = CombatantRosterDefinition(combA, null, entityPc1)
@@ -34,7 +34,7 @@ class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData 
   private val iDef2 = InitiativeDefinition(comb1, 1, List(11))
 
   private case class SimpleCase(action: Action[CombatState], commands: Command[CombatState]*) {
-    def getTestName = (action.getClass.getSimpleName + " to " + commands.map(x => x.getClass.getSimpleName).mkString(", "))
+    def getTestName = action.getClass.getSimpleName + " to " + commands.map(x => x.getClass.getSimpleName).mkString(", ")
   }
 
   private val baseCases: List[SimpleCase] = List(
@@ -44,11 +44,11 @@ class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData 
     SimpleCase(SetCombatComment("comment"), SetCombatCommentCommand("comment")),
     SimpleCase(ApplyRest(RestDuration.ExtendedRest), RestCommand(RestDuration.ExtendedRest)),
     SimpleCase(EndCombat(), EndCombatCommand),
-    SimpleCase(ClearRoster(true), ClearRosterCommand(false))
+    SimpleCase(ClearRoster(all = true), ClearRosterCommand(onlyMonsters = false))
   )
 
   private val healthCases = List(
-    SimpleCase(ApplyDamage(combA, 10), DamageCommand(combA, 10)),
+    SimpleCase(ApplyDamage(combA, 10), AddDamageIndicationCommand(combA, 10), ApplyDamageCommand),
     SimpleCase(HealDamage(combA, 11), HealCommand(combA, 11)),
     SimpleCase(SetTemporaryHP(combA, 10), SetTemporaryHPCommand(combA, 10)),
     SimpleCase(FailDeathSave(combA), FailDeathSaveCommand(combA)),

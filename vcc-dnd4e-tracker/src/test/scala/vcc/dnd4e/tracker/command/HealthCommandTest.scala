@@ -36,35 +36,48 @@ class HealthCommandTest extends SpecificationWithJUnit with CombatStateEventSour
     val (cmd, evt) = builder(combA)
     ("Command " + cmd.getClass.getSimpleName) ^
       "fail if not found" !
-        (given(emptyState) when (cmd) failWith notFoundException) ^
+        (given(emptyState) when cmd failWith notFoundException) ^
       "generate event" !
-        (given(emptyState, evtAddCombA) when (cmd) andThen (evt)) ^
+        (given(emptyState, evtAddCombA) when cmd andThen evt) ^
       endp
 
   }
 
   private val notFoundException = new IllegalActionException("Combatant " + combA + " not in combat")
+  private val illegalStateException = new IllegalStateException("No damage indication present")
 
-  private def damaging = {
-    "command ApplyDamageTransition" ^
-      "fail if combantant is not present" !
-        (given(emptyState, evtAddCombNoId).
-          when(DamageCommand(combA, 10)).
-          failWith(notFoundException)) ^
-      "simple damage" !
-        (given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA, meAddToOrder(comb1, 3, 3), evtStart).
-          when(DamageCommand(combA, 10)).
-          andThen(ApplyDamageEvent(combA, 10))) ^
-      "damage and end combat when last acting is killed" !
-        (given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA,
-          meAddToOrder(comb1, 3, 3), evtStart, killEvent(comb1)).
-          when(DamageCommand(combA, 1000)).
-          andThen(ApplyDamageEvent(combA, 1000), evtEnd)) ^
-      "killing but not the last does kill" !
-        (given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA,
-          meAddToOrder(comb1, 3, 3), evtStart).
-          when(DamageCommand(combA, 1000)).
-          andThen(ApplyDamageEvent(combA, 1000))) ^
-      endp
-  }
+  private def damaging =
+    s2"""command ApplyDamageTransition
+    not insert indication if target not present ${
+      given(emptyState, evtAddCombNoId) when AddDamageIndicationCommand(combA, 10) failWith notFoundException
+    }
+    insert damage indication into state ${
+      given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA, meAddToOrder(comb1, 3, 3), evtStart).
+        when(AddDamageIndicationCommand(combA, 10)).
+        andThen(SetDamageIndicationEvent(combA, 10))
+    }
+    fail if applying but no indication is present in state ${
+        given(emptyState, evtAddCombNoId).
+          when(ApplyDamageCommand).
+          failWith(illegalStateException)
+    }
+    simple damage ${
+        given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA,
+          meAddToOrder(comb1, 3, 3), evtStart, SetDamageIndicationEvent(combA, 10)).
+          when(ApplyDamageCommand).
+          andThen(ApplyDamageEvent(combA, 10), ClearDamageIndicationEvent)
+    }
+    damage and end combat when last acting is killed ${
+        given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA,
+          meAddToOrder(comb1, 3, 3), evtStart, killEvent(comb1), SetDamageIndicationEvent(combA, 1000)).
+          when(ApplyDamageCommand).
+          andThen(ApplyDamageEvent(combA, 1000), ClearDamageIndicationEvent, evtEnd)
+    }
+    killing but not the last live combatant does not end combat ${
+        given(emptyState, evtAddCombA, evtAddCombNoId, evtAddCombNoId, evtInitA,
+          meAddToOrder(comb1, 3, 3), evtStart, SetDamageIndicationEvent(combA, 1000)).
+          when(ApplyDamageCommand).
+          andThen(ApplyDamageEvent(combA, 1000), ClearDamageIndicationEvent)
+    }"""
+
 }

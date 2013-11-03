@@ -17,7 +17,7 @@
 package vcc.dnd4e.tracker.ruling
 
 import vcc.dnd4e.tracker.common.{EffectID, CombatState}
-import vcc.dnd4e.tracker.command.DamageCommand
+import vcc.dnd4e.tracker.command.{AddDamageIndicationCommand, ApplyDamageCommand}
 import vcc.tracker.{Command, Ruling}
 
 case class OngoingDamageRuling(sourceEffect: EffectID, decision: Option[Int])
@@ -40,7 +40,7 @@ case class OngoingDamageRuling(sourceEffect: EffectID, decision: Option[Int])
   protected def commandsFromDecision(state: CombatState): List[Command[CombatState]] = {
     val amount = decision.get
     if(amount > 0 )
-      DamageCommand(sourceEffect.combId, amount) :: Nil
+      List(AddDamageIndicationCommand(sourceEffect.combId, amount), ApplyDamageCommand)
     else
       Nil
   }

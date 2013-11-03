@@ -125,7 +125,8 @@ object Command {
 
   //Health Actions
   case class ApplyDamage(who: CombatantID, damage: Int) extends CombatStateAction(who + " takes " + damage + " hitpoints of damage") {
-    def createCommandStream() = singleCommand(DamageCommand(who, damage))
+    def createCommandStream() =
+      SeqCommandStream(Seq(AddDamageIndicationCommand(who, damage), ApplyDamageCommand))
   }
 
   case class SetTemporaryHP(who: CombatantID, temporaryHP: Int) extends CombatStateAction(who + " recieves " + temporaryHP + " of temporary hitpoints") {

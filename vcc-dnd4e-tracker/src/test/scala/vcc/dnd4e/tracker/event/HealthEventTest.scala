@@ -18,6 +18,7 @@ package vcc.dnd4e.tracker.event
 
 import org.specs2.SpecificationWithJUnit
 import org.specs2.mock.Mockito
+import vcc.dnd4e.tracker.common.DamageIndication
 
 class HealthEventTest extends SpecificationWithJUnit with EventSourceSampleEvents with Mockito {
 
@@ -26,14 +27,17 @@ class HealthEventTest extends SpecificationWithJUnit with EventSourceSampleEvent
     s.lensFactory.combatantHealth(combA).mod(s, ht => spy(ht))
   }
 
-  def is =
-    "HealthEvent test".title ^
-      "ApplyDamageEvent" ! damageEvent ^
-      "ApplyHealingEvent" ! healEvent ^
-      "SetTemporaryHitPointsEvent" ! tempHPEvent ^
-      "FailDeathSaveEvent" ! failDeathEvent ^
-      "RevertDeathEvent" ! revertDeathEvent ^
-      end
+  def is = s2"""
+    HealthEvent test
+      ApplyDamageEvent ${ damageEvent }
+      ApplyHealingEvent ${ healEvent }
+      SetTemporaryHitPointsEvent ${ tempHPEvent }
+      FailDeathSaveEvent ${ failDeathEvent }
+      RevertDeathEvent" ${ revertDeathEvent }
+      SetDamageIndicationEvent ${ execSetDamageIndicationEvent }
+      ClearDamageIndicationEvent ${ clearDamageIndicationEvent }
+      AlterDamageIndicationEvent ${ alterDamageIndicationEvent }
+      """
 
   private def damageEvent = {
     val state = makeState()
@@ -63,5 +67,23 @@ class HealthEventTest extends SpecificationWithJUnit with EventSourceSampleEvent
     val state = makeState()
     RevertDeathEvent(combA).transition(state)
     there was one(state.lensFactory.combatantHealth(combA).get(state)).raiseFromDead()
+  }
+
+  private def execSetDamageIndicationEvent = {
+    val state = makeState()
+    val endState = SetDamageIndicationEvent(combA, 10).transition(state)
+    endState.damageIndication must_== Some(DamageIndication(combA, 10))
+  }
+
+  private def clearDamageIndicationEvent = {
+    val state = makeState()
+    val endState = state.transitionWith(List(SetDamageIndicationEvent(combA, 10), ClearDamageIndicationEvent))
+    endState.damageIndication must_== None
+  }
+
+  private def alterDamageIndicationEvent = {
+    val state = makeState()
+    val endState = state.transitionWith(List(SetDamageIndicationEvent(combA, 10), AlterDamageIndicationEvent(_ / 2)))
+    endState.damageIndication must_== Some(DamageIndication(combA, 5))
   }
 }
