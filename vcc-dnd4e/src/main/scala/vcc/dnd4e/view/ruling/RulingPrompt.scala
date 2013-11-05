@@ -18,7 +18,7 @@ package vcc.dnd4e.view.ruling
 
 import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.view.dialog.PromptDialog.StaticModel
-import vcc.dnd4e.tracker.command.{EndRoundCommand, StartRoundCommand}
+import vcc.dnd4e.tracker.command.{ApplyDamageCommand, EndRoundCommand, StartRoundCommand}
 import vcc.dnd4e.view.dialog.{RadioPromptPanel, PromptDialog}
 import vcc.tracker.{Ruling, RulingContext}
 import vcc.dnd4e.tracker.ruling._
@@ -134,6 +134,9 @@ class RulingPrompt private(context: RulingContext[CombatState]) {
     context.triggeringCommand match {
       case StartRoundCommand(ioi) => makeFormattedCombatantName(ioi) + " - Start Round"
       case EndRoundCommand(ioi) => makeFormattedCombatantName(ioi) + " - End Round"
+      case ApplyDamageCommand =>
+        val di = context.state.damageIndication.get
+        s"${makeFormattedCombatantName(di.target)} - Taking ${di.amount} damage"
       case _ => "Unknown event"
     }
   }
@@ -148,5 +151,9 @@ class RulingPrompt private(context: RulingContext[CombatState]) {
 
   private def makeFormattedCombatantName(ioi: InitiativeOrderID): String = {
     "[%s] %s".format(ioi.toLabelString, context.state.combatant(ioi.combId).name)
+  }
+
+  private def makeFormattedCombatantName(cid: CombatantID): String = {
+   "%s %s".format(cid.simpleNotation, context.state.combatant(cid).name)
   }
 }

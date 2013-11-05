@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,7 +64,8 @@ class PromptDialog(model: PromptDialog.Model, owner: Window)
   private def initializePanel() {
     peer.setTitle(model.dialogTitle)
     addPromptPanelsAndSetActive(model.prompts)
-    promptPanel.setRowHeight(50)
+    val height = if(model.prompts.isDefinedAt(0)) model.prompts(0).getEditorComponent.getPreferredSize.height else 50
+    promptPanel.setRowHeight(height + 5)
     registerEditCompletionListener()
     peer.getRootPane.setDefaultButton(okButton.peer)
     peer.setIconImage(IconLibrary.MetalD20.getImage)

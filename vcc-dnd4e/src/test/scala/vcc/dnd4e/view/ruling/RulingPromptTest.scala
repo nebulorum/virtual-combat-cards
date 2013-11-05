@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,21 +18,23 @@ package vcc.dnd4e.view.ruling
 
 import org.uispec4j.interception.{WindowHandler, WindowInterceptor}
 import org.uispec4j.{Window, Trigger, UISpecTestCase}
-import vcc.dnd4e.tracker.event.{AddEffectEvent, StartCombatEvent, AddCombatantToOrderEvent, AddCombatantEvent}
+import vcc.dnd4e.tracker.event._
 import vcc.dnd4e.tracker.common.Effect.Condition
-import vcc.dnd4e.tracker.command.{EndRoundCommand, StartRoundCommand}
+import vcc.dnd4e.tracker.command._
 import javax.swing.JLabel
 import org.uispec4j.assertion.Assertion
 import org.junit.Assert
 import org.uispec4j.finder.ComponentFinder
-import vcc.tracker.{Command, Ruling, RulingContext}
+import vcc.tracker.{RulingContext, Command, Ruling}
 import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.tracker.ruling._
+import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent.Reduce
 
 class RulingPromptTest extends UISpecTestCase with SampleStateData {
   private val effectNameOnA = "something bad on A"
   private val effectNameOnB = "something bad on B -> worst on B / horrible on B"
   private val nameCombA = "[Aº] Goblin"
+  private val nameCombANoInit = "[A] Goblin"
   private val nameCombB = "[Bº] Fighter"
   private val ongoingDescription = "Ongoing 5 fire"
   private val regenerateDescription = "Regen 2 while bloodied"
@@ -73,6 +75,12 @@ class RulingPromptTest extends UISpecTestCase with SampleStateData {
   def testEndRoundTitle() {
     val context = RulingContext(state, EndRoundCommand(ioiB0), Nil)
     createAndShowDialog(context).process(validateTitleAndCancel(nameCombB + " - End Round")).run()
+  }
+
+  def testApplyDamageTitle() {
+    val nState = state.transitionWith(List(SetDamageIndicationEvent(combA, 14)))
+    val context = RulingContext(nState, ApplyDamageCommand, Nil)
+    createAndShowDialog(context).process(validateTitleAndCancel(nameCombANoInit + " - Taking 14 damage")).run()
   }
 
   def windowContainsLabel(window: Window, expected: String): Assertion = {
@@ -180,6 +188,20 @@ class RulingPromptTest extends UISpecTestCase with SampleStateData {
     Assert.assertEquals(List(OngoingDamageRuling(eidB2, Some(0))), controller.collectAnswer)
   }
 
+  def testResist_skip() {
+    val controller = dialogController(makeDamageContext(ApplyDamageCommand, makeResistList()))
+    val expectedTitle = "Resist: 5 fire"
+    controller.showDialogAndProcess(expectedTitle, "Skip")
+    Assert.assertEquals(List(AlterDamageRuling("Resist: 5 fire", Reduce(5), Some(false))), controller.collectAnswer)
+  }
+
+  def testResist_apply() {
+    val controller = dialogController(makeDamageContext(ApplyDamageCommand, makeResistList()))
+    val expectedTitle = "Resist: 5 fire"
+    controller.showDialogAndProcess(expectedTitle, "Apply")
+    Assert.assertEquals(List(AlterDamageRuling("Resist: 5 fire", Reduce(5), Some(true))), controller.collectAnswer)
+  }
+
   def testOngoingRuling_applyDamage() {
     val controller = dialogController(makeContext(commandStartRoundB, makeOngoingList(eidB2)))
     val expectedTitle = nameCombB + " - Ongoing Damage: " + ongoingDescription
@@ -201,6 +223,10 @@ class RulingPromptTest extends UISpecTestCase with SampleStateData {
     RulingContext(state, command, rulings)
   }
 
+  private def makeDamageContext(command: Command[CombatState], rulings: List[Ruling[CombatState, _, _]]) = {
+    RulingContext(state.transitionWith(List(SetDamageIndicationEvent(combA, 15))), command, rulings)
+  }
+
   private def makeSaveRulingList(id: EffectID): List[Ruling[CombatState, _, _]] = {
     List(SaveRuling(id, None))
   }
@@ -211,6 +237,10 @@ class RulingPromptTest extends UISpecTestCase with SampleStateData {
 
   private def makeOngoingList(id: EffectID): List[Ruling[CombatState, _, _]] = {
     List(OngoingDamageRuling(id, None))
+  }
+
+  private def makeResistList(): List[Ruling[CombatState, _, _]] = {
+    List(AlterDamageRuling("Resist: 5 fire", Reduce(5), None))
   }
 
   private def makeSaveSpecialRulingList(id: EffectID): List[Ruling[CombatState, _, _]] = {
@@ -245,10 +275,10 @@ class RulingPromptTest extends UISpecTestCase with SampleStateData {
       })
     }
 
-    def showDialogAndProcess(expectedTitle: String, button: String) {
+    def showDialogAndProcess(expectedPanelTitle: String, button: String) {
       showDialog().process(new WindowHandler() {
         def process(window: Window): Trigger = {
-          assertTrue(windowContainsLabel(window, expectedTitle))
+          assertTrue(windowContainsLabel(window, expectedPanelTitle))
           window.getRadioButton(button).click()
           window.getButton("Ok").triggerClick()
         }
