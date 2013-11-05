@@ -38,3 +38,8 @@ invisible
 hidden
 defense
 attack
+# Damage alteration
+resist
+insubstantial
+vulnerability
+immune
