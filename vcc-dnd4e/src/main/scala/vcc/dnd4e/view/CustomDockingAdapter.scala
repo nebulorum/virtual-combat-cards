@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ class CustomDockingAdapter(layoutBaseDirectory: File) extends InfoNodeDockAdapte
     root.getWindowBar(Direction.LEFT).addTab(vm.getView("src-block"))
     root.getWindowBar(Direction.LEFT).addTab(vm.getView("src-effects"))
     root.getWindowBar(Direction.LEFT).addTab(vm.getView("src-notes"))
+    root.getWindowBar(Direction.DOWN).addTab(vm.getView("project-news"))
   }
 
   //Helper functions to handle layout
