@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,7 +83,7 @@ class HealthEventTest extends SpecificationWithJUnit with EventSourceSampleEvent
 
   private def alterDamageIndicationEvent = {
     val state = makeState()
-    val endState = state.transitionWith(List(SetDamageIndicationEvent(combA, 10), AlterDamageIndicationEvent(_ / 2)))
+    val endState = state.transitionWith(List(SetDamageIndicationEvent(combA, 10), AlterDamageIndicationEvent(AlterDamageIndicationEvent.Half)))
     endState.damageIndication must_== Some(DamageIndication(combA, 5))
   }
 }

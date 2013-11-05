@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import vcc.dnd4e.tracker.command.{EndRoundCommand, StartRoundCommand}
 import vcc.dnd4e.view.dialog.{RadioPromptPanel, PromptDialog}
 import vcc.tracker.{Ruling, RulingContext}
 import vcc.dnd4e.tracker.ruling._
+import vcc.dnd4e.tracker.common.ConditionMatcher
 
 object RulingPrompt {
 
@@ -74,15 +75,18 @@ class RulingPrompt private(context: RulingContext[CombatState]) {
         makeRulingPromptPanel(sustain, makeTitleFromEffect(" - Sustain effect: ", eid),
           ("Sustain", SustainEffectRulingResult.Sustain),
           ("Cancel", SustainEffectRulingResult.Cancel))
+
       case save@SaveRuling(eid, _) =>
         makeRulingPromptPanel(save, makeTitleFromEffect(" - Save against: ", eid),
           ("Saved", SaveRulingResult.Saved),
           ("Failed save", SaveRulingResult.Failed))
+
       case save@SaveVersusDeathRuling(combId, _) =>
         makeRulingPromptPanel(save, actingCombatantName() + " - Save versus Death",
           ("Saved", SaveVersusDeathResult.Saved),
           ("Saved and Heal (1 HP)", SaveVersusDeathResult.SaveAndHeal),
           ("Failed save", SaveVersusDeathResult.Failed))
+
       case save@SaveSpecialRuling(eid, _) =>
         val progression = RulingPrompt.buildEffectProgression(getEffectDescription(eid))
         makeRulingPromptPanel[SaveSpecialRuling, SaveSpecialRulingResult](save,
@@ -96,12 +100,19 @@ class RulingPrompt private(context: RulingContext[CombatState]) {
           actingCombatantName() + " - Regeneration: " + effectName,
           ("Regenerate " + hint + " HP", hint),
           ("Skip", 0))
+
       case ongoing@OngoingDamageRuling(eid, _) =>
         val ConditionMatcher.FirstOngoing(effectName, hint) = getEffectDescription(eid)
         makeRulingPromptPanel(ongoing,
           actingCombatantName() + " - Ongoing Damage: " + effectName,
           ("Take " + hint + " damage", hint),
           ("Skip", 0))
+
+      case alterDamage@AlterDamageRuling(text, _, _) =>
+        makeRulingPromptPanel(alterDamage,
+          text,
+          ("Apply", true),
+          ("Skip", false))
     }
   }
 

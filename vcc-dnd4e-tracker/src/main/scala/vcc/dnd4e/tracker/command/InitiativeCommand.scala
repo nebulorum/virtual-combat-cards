@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.tracker.event._
 import vcc.dnd4e.tracker.ruling._
 import vcc.tracker.{IllegalActionException, Ruling, Event}
+import vcc.dnd4e.tracker.common.ConditionMatcher
 
 abstract class InitiativeCommand extends CombatStateCommand {
   val who: InitiativeOrderID
@@ -68,7 +69,7 @@ case class EndRoundCommand(who: InitiativeOrderID) extends InitiativeCommand {
 
   private def endRoundMatcher(who:  CombatantID): PartialFunction[Effect, Ruling[CombatState, _, _]] = {
     case effect@Effect(EffectID(`who`, n), _, _, Duration.SaveEnd) =>
-      (SaveRuling(effect.effectId, None))
+      SaveRuling(effect.effectId, None)
     case effect@Effect(EffectID(`who`, n), _, _, Duration.SaveEndSpecial) =>
       SaveSpecialRuling.rulingFromEffect(effect)
     case effect@Effect(eid, _, condition, Duration.RoundBound(InitiativeOrderID(`who`, _), Duration.Limit.EndOfTurnSustain)) =>

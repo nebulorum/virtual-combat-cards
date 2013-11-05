@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,9 +26,13 @@ class ConditionMatcherTest extends SpecificationWithJUnit {
     "splitFirstCondition" ^ e1 ^ endp ^
       "Regeneration matcher" ^ e2 ^ endp ^
       "Ongoing matcher" ^ e3 ^ endp ^
+      "Resist matcher" ^ e4 ^ endp ^
       end
 
   private def e1 = {
+    val obj = new ConditionMatcher {
+      protected def findSubCondition(l: List[String]): Option[(String, Int)] = None
+    }
     val cases = List(
       ("slowed and weak", List("slowed", "weak")),
       ("slowed aNd Weak", List("slowed", "Weak")),
@@ -39,7 +43,7 @@ class ConditionMatcherTest extends SpecificationWithJUnit {
     )
     for ((str, ret) <- cases) yield {
       ("split " + str + " to " + ret) ! {
-        splitFirstCondition(str) must_== ret
+        obj.splitFirstCondition(str) must_== ret
       }
     }
   }
@@ -76,11 +80,27 @@ class ConditionMatcherTest extends SpecificationWithJUnit {
       ("regenerate 2", null),
       ("regen 2", null),
       ("ongoing 4 fire -> ongoing 10 cold", ("ongoing 4 fire", 4)),
-      ("Ongooing 124 fire & thunder and insustancia", null)
+      ("Ongooing 124 fire & thunder and insubstantial", null)
     )
     for ((str, ret) <- cases) yield {
       "match " + str ! {
         FirstOngoing.unapply(str) must_== Option(ret)
+      }
+    }
+  }
+
+  private def e4 = {
+    val cases = List(
+      ("resist 4", ("Resist: 4", 4)),
+      ("resist 14 all while bloodied ", ("Resist: 14 all while bloodied", 14)),
+      ("Res 4", null),
+      ("resist 10 fire and +2 def", ("Resist: 10 fire", 10)),
+      ("+3 def and resist 12 cold", ("Resist: 12 cold", 12)),
+      ("resist 10 fire", ("Resist: 10 fire", 10))
+    )
+    for ((str, ret) <- cases) yield {
+      "match " + str ! {
+        Resist.unapply(str) must_== Option(ret)
       }
     }
   }

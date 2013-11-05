@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,10 @@ package vcc.dnd4e.tracker.command
 
 import vcc.dnd4e.tracker.common.{CombatState, CombatantID}
 import vcc.dnd4e.tracker.event._
-import vcc.tracker.{IllegalActionException, Event}
+import vcc.tracker.{Ruling, IllegalActionException, Event}
+import vcc.dnd4e.tracker.ruling.AlterDamageRuling
+import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent.Reduce
+import vcc.dnd4e.tracker.common.ConditionMatcher.Resist
 
 /**
  * Base health modification transition.
@@ -38,6 +41,11 @@ abstract class HealthCommand(target: CombatantID) extends CombatStateCommand {
   }
 }
 
+/**
+ * Add to state that damaged should be applied
+ * @param target
+ * @param amount
+ */
 case class AddDamageIndicationCommand(target: CombatantID, amount: Int) extends CombatStateCommand {
   def generateEvents(state: CombatState): List[Event[CombatState]] = {
     if (!state.roster.isDefinedAt(target))
@@ -45,6 +53,10 @@ case class AddDamageIndicationCommand(target: CombatantID, amount: Int) extends 
 
     List(SetDamageIndicationEvent(target, amount))
   }
+}
+
+case class AlterDamageIndicationCommand(change: AlterDamageIndicationEvent.Change) extends CombatStateCommand {
+  def generateEvents(state: CombatState): List[Event[CombatState]] = List(AlterDamageIndicationEvent(change))
 }
 
 /**
@@ -67,6 +79,14 @@ case object ApplyDamageCommand extends CombatStateCommand {
     } else {
       damageEvent :: ClearDamageIndicationEvent :: Nil
     }
+  }
+
+  override def requiredRulings(state: CombatState): List[Ruling[CombatState, _, _]] = {
+    val who = state.damageIndication.get.target
+    val targetEffects = state.combatant(who).effects
+    val f : PartialFunction[String, Ruling[CombatState,_,_]] = {case Resist(text, hint) => AlterDamageRuling(text, Reduce(hint), None)}
+
+    targetEffects.effects.map(_.condition.description).collect(f)
   }
 }
 

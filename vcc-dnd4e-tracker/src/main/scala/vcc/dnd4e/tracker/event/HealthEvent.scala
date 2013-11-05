@@ -1,7 +1,5 @@
-package vcc.dnd4e.tracker.event
-
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,6 +14,7 @@ package vcc.dnd4e.tracker.event
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+package vcc.dnd4e.tracker.event
 
 import vcc.dnd4e.tracker.common.{DamageIndication, HealthTracker, CombatState, CombatantID}
 
@@ -37,9 +36,27 @@ case object ClearDamageIndicationEvent extends CombatStateEvent {
     iState.copy(damageIndication = None)
 }
 
-case class AlterDamageIndicationEvent(f: Int => Int) extends CombatStateEvent {
+object AlterDamageIndicationEvent {
+  trait Change {
+    def modify(x: Int): Int
+  }
+
+  case class Reduce(amount:Int) extends Change {
+    def modify(x: Int): Int = Math.max(0, x - amount)
+  }
+
+  case object Half extends Change {
+    def modify(x: Int): Int = x / 2
+  }
+
+  case class Increase(amount: Int) extends Change {
+    def modify(x: Int): Int = x + amount
+  }
+}
+
+case class AlterDamageIndicationEvent(change: AlterDamageIndicationEvent.Change) extends CombatStateEvent {
   def transition(iState: CombatState): CombatState =
-    iState.copy(damageIndication = iState.damageIndication.map(di => di.copy(amount = f(di.amount))))
+    iState.copy(damageIndication = iState.damageIndication.map(di => di.copy(amount = change.modify(di.amount))))
 }
 
 case class ApplyDamageEvent(target: CombatantID, amount: Int) extends HealthEvent {

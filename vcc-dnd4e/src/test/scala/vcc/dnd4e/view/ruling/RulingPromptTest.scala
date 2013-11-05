@@ -47,10 +47,10 @@ class RulingPromptTest extends UISpecTestCase with SampleStateData {
     AddCombatantToOrderEvent(InitiativeDefinition(combA, 0, List(15))),
     AddCombatantToOrderEvent(InitiativeDefinition(combB, 1, List(10))),
     StartCombatEvent,
-    AddEffectEvent(combA, combB, Condition.Generic(effectNameOnA, false), Duration.EndOfEncounter),
-    AddEffectEvent(combB, combA, Condition.Generic(effectNameOnB, false), Duration.EndOfEncounter),
-    AddEffectEvent(combB, combA, Condition.Generic(ongoingDescription + " and slowed", false), Duration.EndOfEncounter),
-    AddEffectEvent(combB, combA, Condition.Generic(regenerateDescription + " and +2 atk", false), Duration.EndOfEncounter)
+    AddEffectEvent(combA, combB, Condition.Generic(effectNameOnA, beneficial = false), Duration.EndOfEncounter),
+    AddEffectEvent(combB, combA, Condition.Generic(effectNameOnB, beneficial = false), Duration.EndOfEncounter),
+    AddEffectEvent(combB, combA, Condition.Generic(ongoingDescription + " and slowed", beneficial = false), Duration.EndOfEncounter),
+    AddEffectEvent(combB, combA, Condition.Generic(regenerateDescription + " and +2 atk", beneficial = true), Duration.EndOfEncounter)
   ))
 
   override def setUp() {

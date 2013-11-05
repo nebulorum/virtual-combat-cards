@@ -16,22 +16,24 @@
  */
 package vcc.dnd4e.tracker.ruling
 
-import org.specs2.mutable.SpecificationWithJUnit
+import org.specs2.SpecificationWithJUnit
 import vcc.dnd4e.tracker.common.Effect.Condition
 import vcc.dnd4e.tracker.common.{EffectID, Duration, CombatState}
-import vcc.dnd4e.tracker.event.{ApplyDamageEvent, AddEffectEvent, EventSourceSampleEvents}
-import vcc.dnd4e.tracker.command.{NextUpCommand, StartRoundCommand, EndRoundCommand}
+import vcc.dnd4e.tracker.event.{SetDamageIndicationEvent, ApplyDamageEvent, AddEffectEvent, EventSourceSampleEvents}
+import vcc.dnd4e.tracker.command.{ApplyDamageCommand, NextUpCommand, StartRoundCommand, EndRoundCommand}
 import vcc.tracker.Ruling
+import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent.Reduce
 
 class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSourceSampleEvents {
 
   private val durationSaveEnd = Duration.SaveEnd
   private val durationSaveEndSpecial = Duration.SaveEndSpecial
   private val durationEoTSA = Duration.RoundBound(ioA0, Duration.Limit.EndOfTurnSustain)
-  private val aCondition = Condition.Generic("bad", false)
-  private val anotherCondition = Condition.Generic("bad -> worst", false)
-  private val regenerateCondition = Condition.Generic("regenerate 10 while bloodied", false)
-  private val ongoingCondition = Condition.Generic("ongoing 5 fire", false)
+  private val aCondition = Condition.Generic("bad", beneficial = false)
+  private val anotherCondition = Condition.Generic("bad -> worst", beneficial = false)
+  private val regenerateCondition = Condition.Generic("regenerate 10 while bloodied", beneficial = true)
+  private val ongoingCondition = Condition.Generic("ongoing 5 fire", beneficial = false)
+  private val resistDamage = Condition.Generic("resist 5 fire", beneficial = true)
 
   private val state = CombatState.empty.transitionWith(List(
     evtAddCombA, evtAddCombNoId, evtInitA, evtStart,
@@ -40,7 +42,9 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
     AddEffectEvent(comb1, combA, aCondition, durationEoTSA),
     AddEffectEvent(combA, combA, aCondition, durationEoTSA),
     AddEffectEvent(combA, combA, ongoingCondition, durationSaveEnd),
-    AddEffectEvent(combA, combA, regenerateCondition, durationSaveEnd)
+    AddEffectEvent(combA, combA, regenerateCondition, durationSaveEnd),
+    AddEffectEvent(combA, combA, resistDamage, durationSaveEnd),
+    SetDamageIndicationEvent(combA, 10)
   ))
 
   private val eidA1 = EffectID(combA, 1)
@@ -50,48 +54,49 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
   private val eidA5 = EffectID(combA, 5)
   private val eid1_1 = EffectID(comb1, 1)
 
-  "EndRoundCommand" should {
-    "detect Save on end of round" in {
+  def is = s2"""
+  EndRoundCommand should
+    detect Save on end of round ${
       EndRoundCommand(ioA0).requiredRulings(state) must contain(SaveRuling(eidA1, None))
     }
-    "detect Save Special on end of round" in {
+    detect Save Special on end of round ${
       EndRoundCommand(ioA0).requiredRulings(state) must contain(SaveSpecialRuling(eidA2, None))
     }
-    "detect all sustains on end of round" in {
+    detect all sustains on end of round ${
       (EndRoundCommand(ioA0).requiredRulings(state)
         must contain(allOf[Ruling[CombatState, _, _]](SustainEffectRuling(eidA3, None), SustainEffectRuling(eid1_1, None))))
     }
-    "detect save versus death when appropriate" in {
+    detect save versus death when appropriate ${
       val nState = state.transitionWith(List(ApplyDamageEvent(combA, 41)))
       (EndRoundCommand(ioA0).requiredRulings(nState)
         must contain(SaveVersusDeathRuling(combA, None)))
     }
-  }
 
-  "StartRoundCommand" should {
-    "detect Ongoing damage" in {
+  StartRoundCommand should
+    detect Ongoing damage ${
       (StartRoundCommand(ioA0).requiredRulings(state)
         must contain(OngoingDamageRuling(eidA4, None)))
     }
-
-    "detect Regeneration damage" in {
+    detect Regeneration damage ${
       (StartRoundCommand(ioA0).requiredRulings(state)
         must contain(RegenerationRuling(eidA5, None)))
     }
-
-    "detect regeneration first" in {
+    detect regeneration first ${
       val regen = List(RegenerationRuling(eidA5, None), OngoingDamageRuling(eidA4, None))
       val detected = StartRoundCommand(ioA0).requiredRulings(state)
-      detected must contain(regen(0))
-      detected must contain(regen(1))
-      detected.indexOf(regen(0)) must beLessThan(detected.indexOf(regen(1)))
+      (detected must contain(regen(0))) and
+        (detected must contain(regen(1))) and
+        (detected.indexOf(regen(0)) must beLessThan(detected.indexOf(regen(1))))
     }
-  }
 
-  "NextUpCommand" should {
-    "ask for a decision on what to put first" in {
+  NextUpCommand should
+    ask for a decision on what to put first ${
       val nextUpCommand = NextUpCommand(io1_0, List(io2_0, ioA0))
       nextUpCommand.requiredRulings(state) must_== List(NextUpRuling(nextUpCommand, None))
     }
-  }
+  DamageCommand should
+    ask for resistance ${
+      ApplyDamageCommand.requiredRulings(state) must_== List(AlterDamageRuling("Resist: 5 fire", Reduce(5), None))
+    }
+  """
 }
