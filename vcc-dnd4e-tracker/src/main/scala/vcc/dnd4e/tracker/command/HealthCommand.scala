@@ -20,8 +20,8 @@ import vcc.dnd4e.tracker.common.{CombatState, CombatantID}
 import vcc.dnd4e.tracker.event._
 import vcc.tracker.{Ruling, IllegalActionException, Event}
 import vcc.dnd4e.tracker.ruling.AlterDamageRuling
-import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent.Reduce
-import vcc.dnd4e.tracker.common.ConditionMatcher.Resist
+import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent._
+import vcc.dnd4e.tracker.common.ConditionMatcher._
 
 /**
  * Base health modification transition.
@@ -43,8 +43,8 @@ abstract class HealthCommand(target: CombatantID) extends CombatStateCommand {
 
 /**
  * Add to state that damaged should be applied
- * @param target
- * @param amount
+ * @param target combatant to apply damage to
+ * @param amount number of hit points to apply
  */
 case class AddDamageIndicationCommand(target: CombatantID, amount: Int) extends CombatStateCommand {
   def generateEvents(state: CombatState): List[Event[CombatState]] = {
@@ -84,9 +84,11 @@ case object ApplyDamageCommand extends CombatStateCommand {
   override def requiredRulings(state: CombatState): List[Ruling[CombatState, _, _]] = {
     val who = state.damageIndication.get.target
     val targetEffects = state.combatant(who).effects
-    val f : PartialFunction[String, Ruling[CombatState,_,_]] = {case Resist(text, hint) => AlterDamageRuling(text, Reduce(hint), None)}
-
-    targetEffects.effects.map(_.condition.description).collect(f)
+    val effectTexts: List[String] = targetEffects.effects.map(_.condition.description)
+    effectTexts.collect { case Vulnerability((text, hint)) => AlterDamageRuling(text, Increase(hint), None)} ++
+      effectTexts.collect { case Resist((text, hint)) => AlterDamageRuling(text, Reduce(hint), None)} ++
+      effectTexts.collect { case Immunity(qualifier) => AlterDamageRuling(qualifier, Reduce(Int.MaxValue), None)} ++
+      effectTexts.collect { case Insubstantial(qualifier) => AlterDamageRuling(qualifier, Half, None)}
   }
 }
 

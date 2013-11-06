@@ -22,7 +22,7 @@ import vcc.dnd4e.tracker.common.{EffectID, Duration, CombatState}
 import vcc.dnd4e.tracker.event.{SetDamageIndicationEvent, ApplyDamageEvent, AddEffectEvent, EventSourceSampleEvents}
 import vcc.dnd4e.tracker.command.{ApplyDamageCommand, NextUpCommand, StartRoundCommand, EndRoundCommand}
 import vcc.tracker.Ruling
-import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent.Reduce
+import vcc.dnd4e.tracker.event.AlterDamageIndicationEvent.{Half, Increase, Reduce}
 
 class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSourceSampleEvents {
 
@@ -34,6 +34,9 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
   private val regenerateCondition = Condition.Generic("regenerate 10 while bloodied", beneficial = true)
   private val ongoingCondition = Condition.Generic("ongoing 5 fire", beneficial = false)
   private val resistDamage = Condition.Generic("resist 5 fire", beneficial = true)
+  private val vulnerableDamage = Condition.Generic("vulnerable 5 cold", beneficial = true)
+  private val immuneDamage = Condition.Generic("Immune poison", beneficial = true)
+  private val insubstantialDamage = Condition.Generic("Insubstantial", beneficial = true)
 
   private val state = CombatState.empty.transitionWith(List(
     evtAddCombA, evtAddCombNoId, evtInitA, evtStart,
@@ -44,6 +47,9 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
     AddEffectEvent(combA, combA, ongoingCondition, durationSaveEnd),
     AddEffectEvent(combA, combA, regenerateCondition, durationSaveEnd),
     AddEffectEvent(combA, combA, resistDamage, durationSaveEnd),
+    AddEffectEvent(combA, combA, vulnerableDamage, durationSaveEnd),
+    AddEffectEvent(combA, combA, immuneDamage, durationSaveEnd),
+    AddEffectEvent(combA, combA, insubstantialDamage, durationSaveEnd),
     SetDamageIndicationEvent(combA, 10)
   ))
 
@@ -68,8 +74,8 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
     }
     detect save versus death when appropriate ${
       val nState = state.transitionWith(List(ApplyDamageEvent(combA, 41)))
-      (EndRoundCommand(ioA0).requiredRulings(nState)
-        must contain(SaveVersusDeathRuling(combA, None)))
+    (EndRoundCommand(ioA0).requiredRulings(nState)
+      must contain(SaveVersusDeathRuling(combA, None)))
     }
 
   StartRoundCommand should
@@ -83,10 +89,10 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
     }
     detect regeneration first ${
       val regen = List(RegenerationRuling(eidA5, None), OngoingDamageRuling(eidA4, None))
-      val detected = StartRoundCommand(ioA0).requiredRulings(state)
-      (detected must contain(regen(0))) and
-        (detected must contain(regen(1))) and
-        (detected.indexOf(regen(0)) must beLessThan(detected.indexOf(regen(1))))
+    val detected = StartRoundCommand(ioA0).requiredRulings(state)
+    (detected must contain(regen(0))) and
+      (detected must contain(regen(1))) and
+      (detected.indexOf(regen(0)) must beLessThan(detected.indexOf(regen(1))))
     }
 
   NextUpCommand should
@@ -96,7 +102,21 @@ class CombatStateRulingLocatorTest extends SpecificationWithJUnit with EventSour
     }
   DamageCommand should
     ask for resistance ${
-      ApplyDamageCommand.requiredRulings(state) must_== List(AlterDamageRuling("Resist: 5 fire", Reduce(5), None))
+      ApplyDamageCommand.requiredRulings(state) must contain(AlterDamageRuling("Resist: 5 fire", Reduce(5), None))
+    }
+    ask for vulnerability ${
+      ApplyDamageCommand.requiredRulings(state) must contain(AlterDamageRuling("Vulnerable: 5 cold", Increase(5), None))
+    }
+    ask for immunity ${
+      ApplyDamageCommand.requiredRulings(state) must contain(AlterDamageRuling("Immune: poison", Reduce(Int.MaxValue), None))
+    }
+    ask for insubstantial ${
+      ApplyDamageCommand.requiredRulings(state) must contain(AlterDamageRuling("Insubstantial", Half, None))
+    }
+    vulnerability must come before resist ${
+      val rulings = ApplyDamageCommand.requiredRulings(state)
+      rulings.indexOf(AlterDamageRuling("Resist: 5 fire", Reduce(5), None)) must
+        beGreaterThan(rulings.indexOf(AlterDamageRuling("Vulnerable: 5 cold", Increase(5), None)))
     }
   """
 }
