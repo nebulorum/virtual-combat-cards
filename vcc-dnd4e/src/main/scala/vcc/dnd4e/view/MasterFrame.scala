@@ -103,7 +103,9 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   }
 
   private def registerDockableWithDockerAndRegisterKeyBinding() {
-    for ((dock, keystroke) <- docks.zip(List("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "alt F6", "alt F7", "alt F8", null))) {
+    val defaultKeyMap: List[String] = List("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "alt F6", "alt F7", "alt F8", null)
+    val macKeyMap: List[String] = List("meta 1", "meta 2", "meta 3", "meta 4", "meta 5", "meta 6", "meta 7", "meta 8", "alt meta 6", "alt meta 7", "alt meta 8", null)
+    for ((dock, keystroke) <- docks.zip(if(Macify.isMac) macKeyMap else defaultKeyMap)) {
       docker.addDockable(dock)
       mainMenu.addToDockRestoreMenu(new MenuItem(new DockableRestoreAction(docker, dock.dockID, dock.dockTitle)))
       val fma = new MenuItem(new DockableFocusAction(docker, dock.dockID, dock.dockTitle))
