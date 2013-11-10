@@ -59,7 +59,7 @@
         <repository>
             <id>exnebula.org</id>
             <name>ExNebula Repository</name>
-            <url>http://www.exnebula.org/files/repo</url>
+            <url>http://mvn.exnebula.org</url>
         </repository>
         <repository>
             <id>SonaType-Snapshot</id>

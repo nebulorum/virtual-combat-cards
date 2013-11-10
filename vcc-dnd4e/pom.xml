@@ -60,13 +60,6 @@
             <version>1.0.0</version>
         </dependency>
     </dependencies>
-    <repositories>
-        <repository>
-            <id>exnebula.org</id>
-            <name>ExNebula Repository</name>
-            <url>http://www.exnebula.org/files/repo</url>
-        </repository>
-    </repositories>
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
