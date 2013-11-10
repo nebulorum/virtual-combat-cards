@@ -19,7 +19,7 @@
         <dependency>
             <groupId>org.uispec4j</groupId>
             <artifactId>uispec4j</artifactId>
-            <version>2.5-SNAPSHOT</version>
+            <version>2.5-FIX1</version>
             <classifier>jdk6</classifier>
             <type>jar</type>
             <scope>test</scope>
@@ -60,6 +60,13 @@
             <version>1.0.0</version>
         </dependency>
     </dependencies>
+    <repositories>
+        <repository>
+            <id>exnebula.org</id>
+            <name>ExNebula Repository</name>
+            <url>http://www.exnebula.org/files/repo</url>
+        </repository>
+    </repositories>
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
