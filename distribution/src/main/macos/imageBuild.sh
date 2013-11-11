@@ -39,14 +39,12 @@ unzip -d "$JAVATGT" $INSTALLZIP
 cp "$PLISTFILE" "$APPBUNDLE/Contents"
 cp src/main/macos/files/PkgInfo "$APPBUNDLE/Contents"
 cp src/main/macos/Resources/* "$APPBUNDLE/Contents/Resources" 
-cp src/main/macos/files/DS_Store $BUILDIN/.DS_Store
-cp src/main/macos/files/App_Link "$BUILDIN/Install Here"
+
 # Copy stub and resources
 mkdir "$APPBUNDLE/Contents/MacOS"
 cp /System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub "$APPBUNDLE/Contents/MacOS/JavaApplicationStub"
 chmod 755 "$APPBUNDLE/Contents/MacOS/JavaApplicationStub"
-/Developer/Tools/SetFile -a B "$APPBUNDLE"
 
 #Make image
-hdiutil create -volname "VCC Installer" -srcfolder $BUILDIN $IMAGE
-hdiutil internet-enable -yes $IMAGE
+src/main/macos/create-dmg --window-size 500 300 --icon-size 96  --volname "VCC Installer" --app-drop-link 380 205 --icon "Virtual Combat Cards" 110 205 --background src/main/macos/Resources/install-bg.tiff $IMAGE $BUILDIN 
+#--volicon src/main/macos/Resources/d20metal.icns
