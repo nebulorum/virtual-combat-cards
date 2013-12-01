@@ -31,11 +31,13 @@ object DamageEffectView {
     val f = new MainFrame {
       title = "Damage Effect Test"
       contents = panel
-      minimumSize = new Dimension(300,500)
+      minimumSize = new Dimension(300, 500)
     }
-    panel.setListContent(new DamageEffectPanelTest().sampleContent)
     f.pack()
     f.visible = true
+    scala.swing.Swing.onEDT {
+      presenter.setContent(new DamageEffectPanelTest().sampleContent ++ Seq(new Entry("Other", "Other")))
+    }
   }
 }
 
@@ -44,9 +46,9 @@ class DamageEffectPanelTest extends UISpecTestCase {
   val sampleContent: Seq[Entry] = Seq(
     new DamageEffectPanel.Entry("One", "Some desc"),
     new DamageEffectPanel.Entry("Two", "Another desc"))
-  
-  private var view:DamageEffectPanel.View = null
-  private val presenter:DamageEffectPresenter = mock(classOf[DamageEffectPresenter])
+
+  private var view: DamageEffectPanel.View = null
+  private val presenter: DamageEffectPresenter = mock(classOf[DamageEffectPresenter])
 
   override def setUp() {
     super.setUp()
@@ -64,27 +66,59 @@ class DamageEffectPanelTest extends UISpecTestCase {
 
   def testOpenFrame() {
     assertTrue(getList.isEnabled)
+    verify(presenter).bind(view)
   }
 
   def testAddElementsToMemento() {
     view.setListContent(sampleContent)
-    assertTrue(getList.contentEquals(sampleContent.map(_.asListText) : _*))
+    assertTrue(getList.contentEquals(sampleContent.map(_.asListText): _*))
   }
 
   def testSelectFromList_shouldUpdateNameField() {
     view.setListContent(sampleContent)
     getList.click(0)
-    verify(presenter).switchSelection(0)
+    verify(presenter).switchSelection(sampleContent(0).id)
   }
 
   def testSelectFromList_shouldSelectOnlyOne() {
     view.setListContent(sampleContent)
     getList.click(0)
     getList.click(1)
-    verify(presenter).switchSelection(1)
+    verify(presenter).switchSelection(sampleContent(1).id)
   }
 
-  private def getList  = {
+  def testSelection_shouldMaintainCurrentSelectionIfStillInList() {
+    view.setListContent(sampleContent)
+    getList.click(1)
+    val entry = new Entry("New", "Other")
+    view.setListContent(Seq(entry) ++ sampleContent)
+    assertThat(getList.selectionEquals(sampleContent(1).asListText))
+  }
+
+  def testSelection_shouldClearSelectionIfCurrentNotInList() {
+    view.setListContent(sampleContent)
+    getList.click(1)
+    val entry = new Entry("New", "Other")
+    view.setListContent(Seq(entry))
+    assertThat(getList.selectionIsEmpty())
+  }
+
+  def testRemoveButton_shouldBeThereButDisableWhenListIsEmpty() {
+    assertFalse(getRemove.isEnabled)
+    assertThat(getRemove.tooltipEquals("Remove effect and damage"))
+  }
+
+  def testRemoveButton_shouldBeEnabledOnSelectionAndCallPresenter() {
+    view.setListContent(sampleContent)
+    getList.click(1)
+    getRemove.click()
+    verify(presenter).removeEntry(sampleContent(1).id)
+  }
+
+  private def getRemove = {
+    getMainWindow.getButton("button.remove")
+  }
+  private def getList = {
     getMainWindow.getListBox("list.memento")
   }
 }

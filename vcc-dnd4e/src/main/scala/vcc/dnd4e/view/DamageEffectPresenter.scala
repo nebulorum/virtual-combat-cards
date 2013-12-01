@@ -17,6 +17,25 @@
 package vcc.dnd4e.view
 
 class DamageEffectPresenter {
+
+  private var view: DamageEffectPanel.View = null
+  private var content: Seq[DamageEffectPanel.Entry] = Nil
+
+  def bind(view: DamageEffectPanel.View) {
+    this.view = view
+  }
+
+  def setContent(newContent: Seq[DamageEffectPanel.Entry]) {
+    this.content = newContent
+    view.setListContent(content)
+  }
+
+  def removeEntry(entryId: Int) {
+    val entries = content.filterNot(_.id == entryId)
+    if (entries.size != content.size)
+      setContent(entries)
+  }
+
   def switchSelection(index: Int) {
   }
 }
