@@ -28,11 +28,12 @@ object DamageEffectEditor {
 
   }
 
-  case class Memento(damage: String, condition: String)
-
+  case class Memento(damage: String, condition: String) {
+    def asListText = damage + "; " + condition
+  }
 }
 
-class DamageEffectEditor(presenter: DamageEffectEditorPresenter) extends MigPanel("") with DamageEffectEditor.View {
+class DamageEffectEditor(presenter: DamageEffectEditorPresenter) extends MigPanel("fillx", "[fill,grow]", "") with DamageEffectEditor.View {
 
   private val damageField = new TextField()
   private val conditionField = new TextField()

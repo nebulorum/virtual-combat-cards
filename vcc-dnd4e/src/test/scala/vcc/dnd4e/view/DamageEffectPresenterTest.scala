@@ -24,48 +24,50 @@ class DamageEffectPresenterTest extends SpecificationWithJUnit with Mockito {
   private val sampleContent = new DamageEffectPanelTest().sampleContent
 
   def is = s2"""
-  Setting content on presenter updates view $e1
-  Remove entry and update list on remove $e2
-  Remove entry that is not there should not change anything $e3
-  When switching should update name on input field $e4
-  When switching should clear input if entry not in content $e5
+  Setting content on presenter updates view ${s().e1}
+  Remove entry and update list on remove ${s().e2}
+  Remove entry that is not there should not change anything ${s().e3}
+  When switching should update name on input field ${s().e4}
+  When switching should clear input if entry not in content ${s().e5}
   """
 
-  private def e1 = {
-    val (_, mockView) = setupLoadedPresenter()
-    there was one(mockView).setListContent(sampleContent)
-  }
+  case class s() {
+    val (presenter, mockView, mockEditorPresenter) = setupLoadedPresenter()
 
-  private def e2 = {
-    val (presenter, mockView) = setupLoadedPresenter()
-    presenter.removeEntry(sampleContent(0).id)
-    (there was one(mockView).setListContent(sampleContent.tail)) and
-      (there was one(mockView).setName(""))
-  }
+    def e1 = {
+      there was one(mockView).setListContent(sampleContent)
+    }
 
-  private def e3 = {
-    val (presenter, mockView) = setupLoadedPresenter()
-    presenter.removeEntry(-1)
-    there was one(mockView).setListContent(sampleContent)
-  }
+    def e2 = {
+      presenter.removeEntry(sampleContent(0).id)
+      (there was one(mockView).setListContent(sampleContent.tail)) and
+        (there was one(mockView).setName(""))
+    }
 
-  private def e4 = {
-    val (presenter, mockView) = setupLoadedPresenter()
-    presenter.switchSelection(sampleContent(0).id)
-    there was one(mockView).setName(sampleContent(0).name)
-  }
+    def e3 = {
+      presenter.removeEntry(-1)
+      there was one(mockView).setListContent(sampleContent)
+    }
 
-  private def e5 = {
-    val (presenter, mockView) = setupLoadedPresenter()
-    presenter.switchSelection(-1)
-    there was one(mockView).setName("")
+    def e4 = {
+      presenter.switchSelection(sampleContent(0).id)
+      (there was one(mockView).setName(sampleContent(0).name)) and
+        (there was one(mockEditorPresenter).setMemento(Some(sampleContent(0).damageEffect)))
+    }
+
+    def e5 = {
+      presenter.switchSelection(-1)
+      (there was one(mockView).setName("")) and
+        (there was one(mockEditorPresenter).setMemento(None))
+    }
   }
 
   private def setupLoadedPresenter() = {
-    val presenter = new DamageEffectPresenter()
+    val mockEditor = mock[DamageEffectEditorPresenter]
+    val presenter = new DamageEffectPresenter(mockEditor)
     val mockView = mock[DamageEffectPanel.View]
     presenter.bind(mockView)
     presenter.setContent(sampleContent)
-    (presenter, mockView)
+    (presenter, mockView, mockEditor)
   }
 }

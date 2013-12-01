@@ -16,7 +16,7 @@
  */
 package vcc.dnd4e.view
 
-class DamageEffectPresenter {
+class DamageEffectPresenter(editorPresenter: DamageEffectEditorPresenter) {
 
   private var view: DamageEffectPanel.View = null
   private var content: Seq[DamageEffectPanel.Entry] = Nil
@@ -39,6 +39,8 @@ class DamageEffectPresenter {
   }
 
   def switchSelection(entryId: Int) {
-    view.setName(content.find(_.id == entryId).map(_.name).getOrElse(""))
+    val entry = content.find(_.id == entryId)
+    view.setName(entry.map(_.name).getOrElse(""))
+    editorPresenter.setMemento(entry.map(_.damageEffect))
   }
 }

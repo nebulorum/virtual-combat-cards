@@ -17,42 +17,26 @@
 package vcc.dnd4e.view
 
 import org.uispec4j.{Window, UISpecAdapter, UISpecTestCase}
-import scala.swing.{MainFrame, Frame}
-import java.awt.Dimension
+import scala.swing.Frame
 import vcc.dnd4e.view.DamageEffectPanel.Entry
 import org.mockito.Mockito._
-
-object DamageEffectView {
-
-  private val presenter = new DamageEffectPresenter
-  private val panel: DamageEffectPanel = new DamageEffectPanel(presenter)
-
-  def main(args: Array[String]) {
-    val f = new MainFrame {
-      title = "Damage Effect Test"
-      contents = panel
-      minimumSize = new Dimension(300, 500)
-    }
-    f.pack()
-    f.visible = true
-    scala.swing.Swing.onEDT {
-      presenter.setContent(new DamageEffectPanelTest().sampleContent ++ Seq(new Entry("Other", "Other")))
-    }
-  }
-}
+import vcc.dnd4e.view.DamageEffectEditor.Memento
+import org.mockito.Matchers
 
 class DamageEffectPanelTest extends UISpecTestCase {
 
   val sampleContent: Seq[Entry] = Seq(
-    new DamageEffectPanel.Entry("One", "Some desc"),
-    new DamageEffectPanel.Entry("Two", "Another desc"))
+    new DamageEffectPanel.Entry("One", Memento("Some Damage", "Some desc")),
+    new DamageEffectPanel.Entry("Two", Memento("Damage", "Another desc")))
+  private val newEntry = new Entry("New", Memento("1d6+4", "Other"))
 
   private var view: DamageEffectPanel.View = null
   private val presenter: DamageEffectPresenter = mock(classOf[DamageEffectPresenter])
+  private val editorPresenter: DamageEffectEditorPresenter = mock(classOf[DamageEffectEditorPresenter])
 
   override def setUp() {
     super.setUp()
-    val panel = new DamageEffectPanel(presenter)
+    val panel = new DamageEffectPanel(presenter, editorPresenter)
     view = panel
     setAdapter(new UISpecAdapter() {
       def getMainWindow: Window = {
@@ -67,6 +51,7 @@ class DamageEffectPanelTest extends UISpecTestCase {
   def testOpenFrame() {
     assertTrue(getList.isEnabled)
     verify(presenter).bind(view)
+    verify(editorPresenter).bind(Matchers.anyObject[DamageEffectEditor.View]())
   }
 
   def testAddElementsToMemento() {
@@ -90,16 +75,14 @@ class DamageEffectPanelTest extends UISpecTestCase {
   def testSelection_shouldMaintainCurrentSelectionIfStillInList() {
     view.setListContent(sampleContent)
     getList.click(1)
-    val entry = new Entry("New", "Other")
-    view.setListContent(Seq(entry) ++ sampleContent)
+    view.setListContent(Seq(newEntry) ++ sampleContent)
     assertThat(getList.selectionEquals(sampleContent(1).asListText))
   }
 
   def testSelection_shouldClearSelectionIfCurrentNotInList() {
     view.setListContent(sampleContent)
     getList.click(1)
-    val entry = new Entry("New", "Other")
-    view.setListContent(Seq(entry))
+    view.setListContent(Seq(newEntry))
     assertThat(getList.selectionIsEmpty())
   }
 
@@ -123,6 +106,7 @@ class DamageEffectPanelTest extends UISpecTestCase {
   private def getRemove = {
     getMainWindow.getButton("button.remove")
   }
+
   private def getList = {
     getMainWindow.getListBox("list.memento")
   }

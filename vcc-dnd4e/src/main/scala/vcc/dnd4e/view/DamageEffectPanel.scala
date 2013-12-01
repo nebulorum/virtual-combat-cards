@@ -37,16 +37,18 @@ object DamageEffectPanel {
     def setName(newName: String)
   }
 
-  class Entry(val name: String, val desc:String) {
+  class Entry(val name: String, val damageEffect: DamageEffectEditor.Memento) {
     val id:Int = EntryIdGenerator.nextId()
 
-    def asListText = s"""<html><body><strong>$name</strong><br/>&nbsp;$desc</body></html>"""
+    def asListText = s"""<html><body><strong>$name</strong><br/>&nbsp;${damageEffect.asListText}</body></html>"""
 
-    override def toString: String = s"Entry($id, $name, $desc)"
+    override def toString: String = s"Entry($id, $name, $damageEffect)"
   }
 }
 
-class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("fillx", "[fill,grow][30]", "[][fill,grow]") with DamageEffectPanel.View {
+class DamageEffectPanel(presenter: DamageEffectPresenter, editorPresenter: DamageEffectEditorPresenter)
+  extends MigPanel("fillx", "[fill,grow][30]", "[][][fill,grow]") with DamageEffectPanel.View {
+
   import DamageEffectPanel._
   private val list = new ListView[Entry]() {
     renderer = ListView.Renderer[Entry,String](_.asListText)(ListView.Renderer.wrap(new DefaultListCellRenderer()))
@@ -54,6 +56,8 @@ class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("fill
   private val removeButton = new Button("-")
 
   private val nameField = new TextField()
+
+  private val effectEditor = new DamageEffectEditor(editorPresenter)
 
   private var currentSelection: Option[Int] = None
 
@@ -90,6 +94,8 @@ class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("fill
     removeButton.enabled = false
     removeButton.tooltip = "Remove effect and damage"
     add(removeButton, "gap unrelated, wrap")
+
+    add(effectEditor, "wrap, span")
 
     list.name = "list.memento"
     list.selection.intervalMode = IntervalMode.Single
