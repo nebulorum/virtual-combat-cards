@@ -16,7 +16,7 @@
  */
 package vcc.dnd4e.view
 
-import scala.swing.{ScrollPane, Button, ListView}
+import scala.swing.{TextField, ScrollPane, Button, ListView}
 import scala.swing.event.{ButtonClicked, ListSelectionChanged}
 import vcc.util.swing.MigPanel
 import scala.swing.ListView.IntervalMode
@@ -34,6 +34,7 @@ object DamageEffectPanel {
 
   trait View {
     def setListContent(content: Seq[Entry])
+    def setName(newName: String)
   }
 
   class Entry(val name: String, val desc:String) {
@@ -45,12 +46,14 @@ object DamageEffectPanel {
   }
 }
 
-class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("flowy, fillx, filly") with DamageEffectPanel.View {
+class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("fillx", "[fill,grow][30]", "[][fill,grow]") with DamageEffectPanel.View {
   import DamageEffectPanel._
   private val list = new ListView[Entry]() {
     renderer = ListView.Renderer[Entry,String](_.asListText)(ListView.Renderer.wrap(new DefaultListCellRenderer()))
   }
   private val removeButton = new Button("-")
+
+  private val nameField = new TextField()
 
   private var currentSelection: Option[Int] = None
 
@@ -61,6 +64,9 @@ class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("flow
     adjustSelection()
   }
 
+  def setName(newName: String) {
+    nameField.text = newName
+  }
 
   private def adjustSelection() {
     if (currentSelection.isDefined) {
@@ -77,14 +83,17 @@ class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("flow
   private def init() {
     presenter.bind(this)
 
-    list.name = "list.memento"
-    list.selection.intervalMode = IntervalMode.Single
-    add(new ScrollPane(list), "w 300")
+    nameField.name = "dep.name"
+    add(nameField, "grow 100")
 
     removeButton.name = "button.remove"
     removeButton.enabled = false
     removeButton.tooltip = "Remove effect and damage"
-    add(removeButton, "")
+    add(removeButton, "gap unrelated, wrap")
+
+    list.name = "list.memento"
+    list.selection.intervalMode = IntervalMode.Single
+    add(new ScrollPane(list), "span, grow")
 
     listenTo(list.selection, removeButton)
 
@@ -95,7 +104,6 @@ class DamageEffectPanel(presenter: DamageEffectPresenter) extends MigPanel("flow
         removeButton.enabled = currentSelection.isDefined
       case ButtonClicked(this.removeButton) =>
         presenter.removeEntry(currentSelection.get)
-
     }
   }
 }

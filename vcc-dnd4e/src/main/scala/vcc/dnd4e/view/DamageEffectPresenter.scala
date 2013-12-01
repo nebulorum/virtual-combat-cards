@@ -32,10 +32,13 @@ class DamageEffectPresenter {
 
   def removeEntry(entryId: Int) {
     val entries = content.filterNot(_.id == entryId)
-    if (entries.size != content.size)
+    if (entries.size != content.size) {
       setContent(entries)
+      view.setName("")
+    }
   }
 
-  def switchSelection(index: Int) {
+  def switchSelection(entryId: Int) {
+    view.setName(content.find(_.id == entryId).map(_.name).getOrElse(""))
   }
 }

@@ -22,11 +22,13 @@ import org.specs2.mock.Mockito
 class DamageEffectPresenterTest extends SpecificationWithJUnit with Mockito {
 
   private val sampleContent = new DamageEffectPanelTest().sampleContent
-  
+
   def is = s2"""
   Setting content on presenter updates view $e1
   Remove entry and update list on remove $e2
   Remove entry that is not there should not change anything $e3
+  When switching should update name on input field $e4
+  When switching should clear input if entry not in content $e5
   """
 
   private def e1 = {
@@ -37,13 +39,26 @@ class DamageEffectPresenterTest extends SpecificationWithJUnit with Mockito {
   private def e2 = {
     val (presenter, mockView) = setupLoadedPresenter()
     presenter.removeEntry(sampleContent(0).id)
-    there was one(mockView).setListContent(sampleContent.tail)
+    (there was one(mockView).setListContent(sampleContent.tail)) and
+      (there was one(mockView).setName(""))
   }
 
   private def e3 = {
     val (presenter, mockView) = setupLoadedPresenter()
     presenter.removeEntry(-1)
     there was one(mockView).setListContent(sampleContent)
+  }
+
+  private def e4 = {
+    val (presenter, mockView) = setupLoadedPresenter()
+    presenter.switchSelection(sampleContent(0).id)
+    there was one(mockView).setName(sampleContent(0).name)
+  }
+
+  private def e5 = {
+    val (presenter, mockView) = setupLoadedPresenter()
+    presenter.switchSelection(-1)
+    there was one(mockView).setName("")
   }
 
   private def setupLoadedPresenter() = {

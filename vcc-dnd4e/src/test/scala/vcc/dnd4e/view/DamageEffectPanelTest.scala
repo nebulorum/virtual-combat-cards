@@ -115,6 +115,11 @@ class DamageEffectPanelTest extends UISpecTestCase {
     verify(presenter).removeEntry(sampleContent(1).id)
   }
 
+  def testUpdateName() {
+    view.setName("The name")
+    assertThat(getMainWindow.getTextBox("dep.name").textEquals("The name"))
+  }
+
   private def getRemove = {
     getMainWindow.getButton("button.remove")
   }
