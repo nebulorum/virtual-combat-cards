@@ -20,6 +20,7 @@ package vcc.dnd4e.view
 import scala.swing.{Frame, Label, TextField, MainFrame}
 import vcc.util.swing.MigPanel
 import org.uispec4j.{Window, UISpecAdapter, UISpecTestCase}
+import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
 
 class GroupFormPanelTest extends UISpecTestCase {
 
@@ -66,14 +67,54 @@ class GroupFormPanelTest extends UISpecTestCase {
     panel.setContent(Seq(alice, bob))
     getGroupList.selectIndices(0)
 
-    getMainWindow.getButton("form.back").click()
+    getFormBack.click()
 
     assertThat(getGroupList.isVisible)
     assertThat(getGroupList.selectionIsEmpty())
   }
 
+  def testByDefaultBlankFromHasSaveDisabled() {
+    assertThat(getFormSave.isVisible)
+    assertFalse(getFormSave.isEnabled)
+    getFormName.setText("")
+  }
+
+  def testSettingValidFields_shouldEnableSave() {
+    getFormName.setText("David")
+    getFormAge.setText("3")
+    assertThat(getFormSave.isVisible)
+    assertThat("save should be enabled", getFormSave.isEnabled)
+  }
+
+  def testSettingInvalidFields_shouldKeepSaveDisabled() {
+    getFormName.setText("David")
+    getFormAge.setText("a")
+    assertThat(getFormSave.isVisible)
+    assertFalse(getFormSave.isEnabled)
+  }
+
+  def testWhenSelectingEntry_saveShouldBeEnabled() {
+    panel.setContent(Seq(alice, bob))
+    getGroupList.selectIndices(0)
+    assertThat(getFormSave.isVisible)
+    assertThat(getFormSave.isEnabled)
+  }
+
+  def testWhenNewFormAndDataInvalidLeaveSaveDisabled() {
+    panel.setContent(Seq(alice, bob))
+    getGroupList.selectIndices(0)
+    getFormAge.setText("NaN")
+    assertFalse("Save should be disabled", getFormSave.isEnabled)
+  }
+
   private def getFormName = getMainWindow.getInputTextBox("form.name")
+
   private def getFormAge = getMainWindow.getInputTextBox("form.age")
+
+  private def getFormSave = getMainWindow.getButton("form.save")
+
+  private def getFormBack = getMainWindow.getButton("form.back")
+
   private def getGroupList = getMainWindow.getListBox("group.list")
 }
 
@@ -81,20 +122,20 @@ object GroupFormPanelTest {
 
   case class People(name: String, age: Int)
 
-  class PeopleForm extends MigPanel("debug,fill") with GroupFormPanel.Form[People] {
+  class PeopleForm extends MigPanel("fillx", "[]rel[grow]", "[][]") with GroupFormPanel.Form[People] {
     val nameField = new TextField()
     nameField.name = "form.name"
     val ageField = new TextField()
     ageField.name = "form.age"
 
     add(new Label("Name"))
-    add(nameField, "wrap, growx")
+    add(nameField, "wrap, grow")
     add(new Label("Age"))
-    add(ageField, "wrap, growx")
+    add(ageField, "wrap, grow")
     listenTo(ageField)
     reactions += {
       case scala.swing.event.ValueChanged(this.ageField) =>
-        println("Age change: " + ageField.text)
+        publish(FormValueChanged(this, valid = isAllDigits(ageField.text)))
     }
 
     def setEntry(entry: People) {
@@ -103,18 +144,18 @@ object GroupFormPanelTest {
     }
   }
 
+  private def isAllDigits(x: String) = x forall Character.isDigit
+
 }
 
 object GroupFormExample {
 
   import GroupFormPanelTest._
 
-
   val frame = new MainFrame {
     private val panel: GroupFormPanel[People] = new GroupFormPanel[People](new PeopleForm)
     contents = panel
     panel.setContent(Seq(People("Alice", 19), People("Bob", 33), People("charlie", 25)))
-//    contents = new PeopleForm
   }
 
   def main(args: Array[String]) {
