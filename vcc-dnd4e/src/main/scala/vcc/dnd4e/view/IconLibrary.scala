@@ -42,4 +42,11 @@ object IconLibrary {
   val MicroBlank = loadIcon("/vcc/dnd4e/images/mi_blank.png")
 
   val MiniWand = loadIcon("/vcc/dnd4e/images/icon_wand.gif")
+
+  val DiskIcon = loadIcon("/vcc/dnd4e/images/disk.png")
+
+  val DeleteIcon = loadIcon("/vcc/dnd4e/images/delete.png")
+
+  val ThreeBarIcon = loadIcon("/vcc/dnd4e/images/3bar.png")
+
 }
