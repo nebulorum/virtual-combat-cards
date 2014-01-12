@@ -17,10 +17,12 @@
 
 package vcc.dnd4e.view
 
-import scala.swing.{Frame, Label, TextField, MainFrame}
+import scala.swing._
 import vcc.util.swing.MigPanel
 import org.uispec4j.{Window, UISpecAdapter, UISpecTestCase}
-import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
+import org.uispec4j.assertion.Assertion
+import scala.swing.event.ValueChanged
+import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
 
 class GroupFormPanelTest extends UISpecTestCase {
 
@@ -28,6 +30,7 @@ class GroupFormPanelTest extends UISpecTestCase {
 
   private val alice = People("Alice", 28)
   private val bob = People("Bob", 33)
+  private val charlie = People("Charlie", 20)
 
   private var panel: GroupFormPanel[People] = null
 
@@ -107,6 +110,36 @@ class GroupFormPanelTest extends UISpecTestCase {
     assertFalse("Save should be disabled", getFormSave.isEnabled)
   }
 
+  def testWhenSaveIsValidClickingSave_shouldSaveEntryOnListAndGoBack() {
+    panel.setContent(Seq(alice, bob, charlie))
+
+    getGroupList.selectIndex(1)
+    getFormAge.setText("10")
+    getFormName.setText("Bobby")
+    getFormSave.click()
+    assertThat("Saved data not matching",
+      panelContentMatches(panel, Seq(alice, People("Bobby", 10), charlie)))
+    assertThat(getGroupList.isVisible)
+  }
+
+  def testWhenFormIsValidTriggeringSaveEvent_shouldSaveContentAndStayInForm() {
+    panel.setContent(Seq(alice))
+    getGroupList.selectIndex(0)
+    getFormName.setText("Alister")
+    getMainWindow.getButton("form.innerButton").click()
+    assertThat(panelContentMatches(panel, Seq(People("Alister", alice.age))))
+    assertThat(getFormName.isVisible)
+  }
+
+  def testWhenFormIsInvalidTriggeringSaveEvent_shouldNotSaveContentAndStayInForm() {
+    panel.setContent(Seq(alice))
+    getGroupList.selectIndex(0)
+    getFormAge.setText("Alister")
+    getMainWindow.getButton("form.innerButton").click()
+    assertThat(panelContentMatches(panel, Seq(alice)))
+    assertThat(getFormName.isVisible)
+  }
+
   private def getFormName = getMainWindow.getInputTextBox("form.name")
 
   private def getFormAge = getMainWindow.getInputTextBox("form.age")
@@ -116,6 +149,14 @@ class GroupFormPanelTest extends UISpecTestCase {
   private def getFormBack = getMainWindow.getButton("form.back")
 
   private def getGroupList = getMainWindow.getListBox("group.list")
+
+  private def panelContentMatches[T](panel: GroupFormPanel[T], expectedContent: Seq[T]): Assertion = {
+    new Assertion {
+      def check() {
+        assert(panel.getContent == expectedContent)
+      }
+    }
+  }
 }
 
 object GroupFormPanelTest {
@@ -127,21 +168,34 @@ object GroupFormPanelTest {
     nameField.name = "form.name"
     val ageField = new TextField()
     ageField.name = "form.age"
+    val actionButton = new Button(Action("Save"){
+      publish(FormSave(this))
+    })
+    actionButton.name = "form.innerButton"
 
-    add(new Label("Name"))
-    add(nameField, "wrap, grow")
-    add(new Label("Age"))
-    add(ageField, "wrap, grow")
-    listenTo(ageField)
-    reactions += {
-      case scala.swing.event.ValueChanged(this.ageField) =>
-        publish(FormValueChanged(this, valid = isAllDigits(ageField.text)))
+    init()
+
+    private def init() {
+      add(new Label("Name"))
+      add(nameField, "wrap, grow")
+      add(new Label("Age"))
+      add(ageField, "wrap, grow")
+      add(actionButton, "span 2")
+      listenTo(ageField)
+      reactions += {
+        case ValueChanged(this.ageField) =>
+          publish(FormValueChanged(this, valid = isAllDigits(ageField.text)))
+      }
     }
 
     def setEntry(entry: People) {
       nameField.text = entry.name
       ageField.text = entry.age.toString
     }
+
+    def getEntry = People(nameField.text, ageField.text.toInt)
+
+    def isValid: Boolean = isAllDigits(ageField.text)
   }
 
   private def isAllDigits(x: String) = x forall Character.isDigit
