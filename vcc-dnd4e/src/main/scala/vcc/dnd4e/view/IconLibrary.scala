@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,5 +48,9 @@ object IconLibrary {
   val DeleteIcon = loadIcon("/vcc/dnd4e/images/delete.png")
 
   val ThreeBarIcon = loadIcon("/vcc/dnd4e/images/3bar.png")
+
+  val PageCopyIcon = loadIcon("/vcc/dnd4e/images/page_copy.png")
+
+  val AddIcon = loadIcon("/vcc/dnd4e/images/add.png")
 
 }

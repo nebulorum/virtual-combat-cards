@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2013-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@ object GroupFormPanel {
 
     def getEntry: T
 
+    def clear(): Unit
+
     def isValid: Boolean
   }
 
@@ -43,7 +45,12 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
   private val groupList = createGroupList()
   private val backButton = createBackButton()
   private val saveButton = createSaveButton()
+  private val newButton = createNewButton()
+  private val deleteButton = createDeleteButton()
+  private val copyButton = createCopyButton()
   private val formPanel = createFormPanel()
+  private val groupPanel = createGroupPanel()
+  private var currentSelectedEntry: Option[Int] = None
 
   init()
 
@@ -59,21 +66,33 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
       add(backButton, "wrap")
       add(formComponent, "span 3, growx, wrap")
       add(saveButton, "")
+      add(deleteButton, "")
+      add(copyButton, "")
+    }
+    panel
+  }
+
+  private def createGroupPanel() = {
+    val panel = new MigPanel("") {
+      add(newButton, "wrap")
+      add(groupList)
     }
     panel
   }
 
   private def init() {
-    addCard(groupList, "group")
+    addCard(groupPanel, "group")
     addCard(formPanel, "form")
     showFormCard()
 
     listenTo(groupList.selection, formComponent)
 
     reactions += {
-      case ListSelectionChanged(this.groupList, range, false) =>
+      case ListSelectionChanged(this.groupList, range, false) if !currentSelectedEntry.isDefined =>
+        currentSelectedEntry = groupList.selection.indices.headOption
+        if (currentSelectedEntry.isDefined)
+          formComponent.setEntry(groupList.listData(currentSelectedEntry.get))
         showFormCard()
-        formComponent.setEntry(groupList.listData(groupList.selection.leadIndex))
       case FormValueChanged(this.formComponent, valid) =>
         saveButton.enabled = valid
       case FormSave(this.formComponent) =>
@@ -110,14 +129,66 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
     button
   }
 
+  private def createNewButton() = {
+    val button = new Button(Action("") {
+      formComponent.clear()
+      showFormCard()
+    })
+    button.name = "group.newButton"
+    button.icon = IconLibrary.AddIcon
+    button
+  }
+
+  private def createDeleteButton() = {
+    val button = new Button(Action("") {
+      groupList.listData = deleteEntry(currentSelectedEntry.get, groupList.listData)
+      showGroupCard()
+    })
+    button.name = "form.delete"
+    button.icon = IconLibrary.DeleteIcon
+    button
+  }
+
+  private def createCopyButton() = {
+    val button = new Button(Action("") {
+      groupList.listData = duplicateEntry(currentSelectedEntry.get, groupList.listData)
+    })
+    button.name = "form.copy"
+    button.icon = IconLibrary.PageCopyIcon
+    button.enabled = false
+    button
+  }
+
+  private def duplicateEntry(pos: Int, data: Seq[T]) = data.take(pos+1) ++ data.drop(pos)
+
+  private def deleteEntry(pos: Int, data: Seq[T]) = data.take(pos) ++ data.drop(pos+1)
+
   private def doSave() {
-    groupList.listData = groupList.listData.updated(groupList.selection.leadIndex, formComponent.getEntry)
+    val oldList = groupList.listData
+    val newList: Seq[T] = if (currentSelectedEntry.isDefined)
+      oldList.updated(groupList.selection.leadIndex, formComponent.getEntry)
+    else
+      formComponent.getEntry +: oldList
+    groupList.listData = newList
   }
 
   private def showGroupCard() {
-    showCard("group")
+    groupList.peer.clearSelection()
+    groupList.selection.indices.clear()
+    currentSelectedEntry = None
+    if (groupList.listData.isEmpty) {
+      formComponent.clear()
+      showFormCard()
+    } else
+      showCard("group")
   }
+
   private def showFormCard() {
+    val isOldEntry = currentSelectedEntry.isDefined
+    deleteButton.enabled = isOldEntry
+    saveButton.enabled = formComponent.isValid
+    backButton.enabled = !groupList.listData.isEmpty
+    copyButton.enabled = currentSelectedEntry.isDefined
     showCard("form")
   }
 }

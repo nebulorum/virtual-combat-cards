@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2013-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 package vcc.dnd4e.view
 
 import scala.swing._
@@ -47,9 +46,10 @@ class GroupFormPanelTest extends UISpecTestCase {
     })
   }
 
-  def testWithEmptyList_showForm() {
-    assertThat(getFormName.isVisible)
-    assertThat(getFormAge.isVisible)
+  def testWithEmptyList_showBlankForm() {
+    assertBlankFormShown()
+    assertThat(not(getBackButton.isEnabled))
+    assertThat(not(getCopyButton.isEnabled))
   }
 
   def testWithContent_mustShowList() {
@@ -70,44 +70,44 @@ class GroupFormPanelTest extends UISpecTestCase {
     panel.setContent(Seq(alice, bob))
     getGroupList.selectIndices(0)
 
-    getFormBack.click()
+    getBackButton.click()
 
     assertThat(getGroupList.isVisible)
     assertThat(getGroupList.selectionIsEmpty())
   }
 
   def testByDefaultBlankFromHasSaveDisabled() {
-    assertThat(getFormSave.isVisible)
-    assertFalse(getFormSave.isEnabled)
+    assertThat(getSaveButton.isVisible)
+    assertFalse(getSaveButton.isEnabled)
     getFormName.setText("")
   }
 
   def testSettingValidFields_shouldEnableSave() {
     getFormName.setText("David")
     getFormAge.setText("3")
-    assertThat(getFormSave.isVisible)
-    assertThat("save should be enabled", getFormSave.isEnabled)
+    assertThat(getSaveButton.isVisible)
+    assertThat("save should be enabled", getSaveButton.isEnabled)
   }
 
   def testSettingInvalidFields_shouldKeepSaveDisabled() {
     getFormName.setText("David")
     getFormAge.setText("a")
-    assertThat(getFormSave.isVisible)
-    assertFalse(getFormSave.isEnabled)
+    assertThat(getSaveButton.isVisible)
+    assertFalse(getSaveButton.isEnabled)
   }
 
   def testWhenSelectingEntry_saveShouldBeEnabled() {
     panel.setContent(Seq(alice, bob))
     getGroupList.selectIndices(0)
-    assertThat(getFormSave.isVisible)
-    assertThat(getFormSave.isEnabled)
+    assertThat(getSaveButton.isVisible)
+    assertThat(getSaveButton.isEnabled)
   }
 
   def testWhenNewFormAndDataInvalidLeaveSaveDisabled() {
     panel.setContent(Seq(alice, bob))
     getGroupList.selectIndices(0)
     getFormAge.setText("NaN")
-    assertFalse("Save should be disabled", getFormSave.isEnabled)
+    assertFalse("Save should be disabled", getSaveButton.isEnabled)
   }
 
   def testWhenSaveIsValidClickingSave_shouldSaveEntryOnListAndGoBack() {
@@ -116,7 +116,7 @@ class GroupFormPanelTest extends UISpecTestCase {
     getGroupList.selectIndex(1)
     getFormAge.setText("10")
     getFormName.setText("Bobby")
-    getFormSave.click()
+    getSaveButton.click()
     assertThat("Saved data not matching",
       panelContentMatches(panel, Seq(alice, People("Bobby", 10), charlie)))
     assertThat(getGroupList.isVisible)
@@ -140,20 +140,113 @@ class GroupFormPanelTest extends UISpecTestCase {
     assertThat(getFormName.isVisible)
   }
 
+  def testWhenClickingNewButton_shouldShowBlankForm() {
+    panel.setContent(Seq(alice))
+    getGroupList.selectIndex(0)
+    getBackButton.click()
+    getNewButton.click()
+    assertBlankFormShown()
+  }
+
+  def testAfterClickNewAndSavingNewForm_shouldHaveNewEntryInTopOfList() {
+    panel.setContent(Seq(bob))
+    getNewButton.click()
+    fillInFormFor(alice)
+    assertThat(panelContentMatches(panel, Seq(alice, bob)))
+  }
+
+  def testGoingBackAndForthBetweenFormAndList_shouldRespectNewPolice() {
+    panel.setContent(Seq(bob))
+    getGroupList.selectIndex(0)
+    getBackButton.click()
+    getNewButton.click()
+    fillInFormFor(alice)
+    assertThat(panelContentMatches(panel, Seq(alice, bob)))
+  }
+
+  def testGoingIntoFormAndClickingDelete_shouldRemoveEntryAndGoBack() {
+    panel.setContent(Seq(alice, bob, charlie))
+    getGroupList.selectIndex(1)
+    getDeleteButton.click()
+    assertThat(panelContentMatches(panel, Seq(alice, charlie)))
+    assertThat(getGroupList.isVisible)
+  }
+
+  def testNewFormShouldNotHaveDeleteEnabled() {
+    panel.setContent(Seq(alice))
+    getNewButton.click()
+    assertThat(not(getDeleteButton.isEnabled))
+  }
+
+  def testDeletingLastInEntryListShouldWork() {
+    panel.setContent(Seq(alice, bob, charlie))
+    getGroupList.selectIndex(2)
+    getDeleteButton.click()
+    assertThat(panelContentMatches(panel, Seq(alice, bob)))
+    assertThat(getGroupList.isVisible)
+  }
+
+  def testAfterDeletingAllEntries_shouldGoToBlankForm() {
+    panel.setContent(Seq(alice))
+    getGroupList.selectIndex(0)
+    getDeleteButton.click()
+    assertThat(panelContentMatches(panel, Seq()))
+    assertBlankFormShown()
+    assertThat(not(getBackButton.isEnabled))
+  }
+
+  def testDeletingCopiedInstances_shouldRemoveOnlyOneCopy() {
+    panel.setContent(Seq(alice, bob, bob, charlie))
+    getGroupList.selectIndex(1)
+    getDeleteButton.click()
+    assertThat(panelContentMatches(panel, Seq(alice, bob, charlie)))
+  }
+
+  def testOnceSelectedSavedEntryCopying_shouldResultInNewEntryAfterFirst() {
+    panel.setContent(Seq(alice, bob, charlie))
+    getGroupList.selectIndex(1)
+    getCopyButton.click()
+    getFormName.setText("Bobby")
+    getSaveButton.click()
+    assertThat(panelContentMatches(panel, Seq(alice, bob.copy(name = "Bobby"), bob, charlie)))
+  }
+
   private def getFormName = getMainWindow.getInputTextBox("form.name")
 
   private def getFormAge = getMainWindow.getInputTextBox("form.age")
 
-  private def getFormSave = getMainWindow.getButton("form.save")
+  private def getSaveButton = getMainWindow.getButton("form.save")
 
-  private def getFormBack = getMainWindow.getButton("form.back")
+  private def getBackButton = getMainWindow.getButton("form.back")
 
   private def getGroupList = getMainWindow.getListBox("group.list")
+
+  private def getNewButton = getMainWindow.getButton("group.newButton")
+
+  private def getDeleteButton = getMainWindow.getButton("form.delete")
+
+  private def getCopyButton = getMainWindow.getButton("form.copy")
+
+  private def fillInFormFor(entry: People) {
+    getFormName.setText(entry.name)
+    getFormAge.setText(entry.age.toString)
+    getSaveButton.click()
+  }
+
+  private def assertBlankFormShown() {
+    assertThat(getFormName.textIsEmpty)
+    assertThat(getFormAge.textIsEmpty)
+    assertThat(getFormName.isVisible)
+    assertThat(getFormAge.isVisible)
+    assertThat(not(getSaveButton.isEnabled))
+    assertThat(not(getCopyButton.isEnabled))
+  }
 
   private def panelContentMatches[T](panel: GroupFormPanel[T], expectedContent: Seq[T]): Assertion = {
     new Assertion {
       def check() {
-        assert(panel.getContent == expectedContent)
+        if (panel.getContent != expectedContent)
+          throw new AssertionError(s"Panel content: ${panel.getContent} does not match expected content: $expectedContent")
       }
     }
   }
@@ -168,7 +261,7 @@ object GroupFormPanelTest {
     nameField.name = "form.name"
     val ageField = new TextField()
     ageField.name = "form.age"
-    val actionButton = new Button(Action("Save"){
+    val actionButton = new Button(Action("Save") {
       publish(FormSave(this))
     })
     actionButton.name = "form.innerButton"
@@ -196,9 +289,14 @@ object GroupFormPanelTest {
     def getEntry = People(nameField.text, ageField.text.toInt)
 
     def isValid: Boolean = isAllDigits(ageField.text)
+
+    def clear() {
+      ageField.text = ""
+      nameField.text = ""
+    }
   }
 
-  private def isAllDigits(x: String) = x forall Character.isDigit
+  private def isAllDigits(x: String) = (x forall Character.isDigit) && (x != "")
 
 }
 
