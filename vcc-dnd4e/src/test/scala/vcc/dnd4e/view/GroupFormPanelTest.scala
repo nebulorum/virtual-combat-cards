@@ -4,7 +4,7 @@
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * (at your` option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -22,6 +22,7 @@ import org.uispec4j.{Window, UISpecAdapter, UISpecTestCase}
 import org.uispec4j.assertion.Assertion
 import scala.swing.event.ValueChanged
 import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
+import javax.swing.JLabel
 
 class GroupFormPanelTest extends UISpecTestCase {
 
@@ -35,7 +36,7 @@ class GroupFormPanelTest extends UISpecTestCase {
 
   override def setUp() {
     super.setUp()
-    panel = new GroupFormPanel[People](new PeopleForm)
+    panel = new GroupFormPanel[People](new PeopleForm, _.asListView)
     setAdapter(new UISpecAdapter() {
       def getMainWindow: Window = {
         val frame = new Frame {
@@ -45,16 +46,36 @@ class GroupFormPanelTest extends UISpecTestCase {
       }
     })
   }
-
+  
   def testWithEmptyList_showBlankForm() {
     assertBlankFormShown()
     assertThat(not(getBackButton.isEnabled))
     assertThat(not(getCopyButton.isEnabled))
+    assertThat(labelMatches("form.entryLabel", "Entry"))
+    assertThat(getSaveButton.tooltipEquals("Save Entry"))
+    assertThat(getCopyButton.tooltipEquals("Copy Entry"))
+    assertThat(getDeleteButton.tooltipEquals("Delete Entry"))
+    assertThat(getBackButton.tooltipEquals("Show all Entries"))
   }
 
   def testWithContent_mustShowList() {
     panel.setContent(Seq(alice))
-    assertThat(getGroupList.contains(alice.toString))
+    assertThat(getGroupList.contains(alice.asListView))
+    assertThat(labelMatches("group.entriesLabel", "Entries"))
+    assertThat(getNewButton.tooltipEquals("Create new Entry"))
+  }
+
+  def testCustomizingPanel_shouldChangeMessages() {
+    panel.setContent(Seq(alice))
+    panel.setHeaderLabels("Person", "Persons")
+    assertThat(labelMatches("group.entriesLabel", "Persons"))
+    assertThat(getNewButton.tooltipEquals("Create new Person"))
+  }
+
+  def testCustomizingPanel_shouldChangeFormMessages() {
+    panel.setHeaderLabels("Person", "Persons")
+    assertThat(labelMatches("form.entryLabel", "Person"))
+    assertThat(getSaveButton.tooltipEquals("Save Person"))
   }
 
   def testWithContent_clickOnListGoesToFrom() {
@@ -250,13 +271,31 @@ class GroupFormPanelTest extends UISpecTestCase {
       }
     }
   }
+
+  private def labelMatches(labelName: String, expectedText: String) = {
+    new Assertion {
+      def check() {
+        val label = getMainWindow.findSwingComponent(classOf[JLabel], labelName)
+        if (label == null)
+          throw new AssertionError(s"Could not find label with name: $labelName")
+
+        val labelText = label.getText
+        if (labelText != expectedText)
+          throw new AssertionError(s"Label $labelName text does not match expected. Found: $labelText Expected: $expectedText")
+      }
+    }
+  }
 }
 
 object GroupFormPanelTest {
 
-  case class People(name: String, age: Int)
+  case class People(name: String, age: Int) {
+    def asListView: String  =
+      s"""<html><body><strong>$name</strong><br/>&nbsp;$age</body></html>"""
+  }
 
-  class PeopleForm extends MigPanel("fillx", "[]rel[grow]", "[][]") with GroupFormPanel.Form[People] {
+
+  class PeopleForm extends MigPanel("fillx, ins panel", "[]rel[grow]", "[][]") with GroupFormPanel.Form[People] {
     val nameField = new TextField()
     nameField.name = "form.name"
     val ageField = new TextField()
@@ -273,7 +312,8 @@ object GroupFormPanelTest {
       add(nameField, "wrap, grow")
       add(new Label("Age"))
       add(ageField, "wrap, grow")
-      add(actionButton, "span 2")
+      add(actionButton, "span 2, wrap")
+      add(new ScrollPane(new TextArea("Sample text not part of form")), "span 2, growx, growy, push")
       listenTo(ageField)
       reactions += {
         case ValueChanged(this.ageField) =>
@@ -305,8 +345,9 @@ object GroupFormExample {
   import GroupFormPanelTest._
 
   val frame = new MainFrame {
-    private val panel: GroupFormPanel[People] = new GroupFormPanel[People](new PeopleForm)
+    private val panel: GroupFormPanel[People] = new GroupFormPanel[People](new PeopleForm, _.asListView)
     contents = panel
+    panel.setHeaderLabels("Person", "Persons")
     panel.setContent(Seq(People("Alice", 19), People("Bob", 33), People("charlie", 25)))
   }
 

@@ -21,7 +21,8 @@ import scala.swing._
 import scala.swing.event.{Event, ListSelectionChanged}
 import scala.swing.ListView.IntervalMode
 import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
-import javax.swing.BorderFactory
+import javax.swing.{DefaultListCellRenderer, BorderFactory}
+import java.awt.Color
 
 object GroupFormPanel {
 
@@ -41,13 +42,15 @@ object GroupFormPanel {
 
 }
 
-class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extends CardPanel {
+class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format: T => String) extends CardPanel {
   private val groupList = createGroupList()
   private val backButton = createBackButton()
   private val saveButton = createSaveButton()
   private val newButton = createNewButton()
   private val deleteButton = createDeleteButton()
   private val copyButton = createCopyButton()
+  private val formLabel = createLabel("form.entryLabel", "Entry")
+  private val listLabel = createLabel("group.entriesLabel", "Entries")
   private val formPanel = createFormPanel()
   private val groupPanel = createGroupPanel()
   private var currentSelectedEntry: Option[Int] = None
@@ -61,21 +64,38 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
 
   def getContent: Seq[T] = groupList.listData
 
+  def setHeaderLabels(singleLabel: String, pluralLabel: String) {
+    listLabel.text = pluralLabel
+    formLabel.text = singleLabel
+    newButton.tooltip = "Create new " + singleLabel
+    saveButton.tooltip = "Save " + singleLabel
+    copyButton.tooltip = "Copy " + singleLabel
+    deleteButton.tooltip = "Delete " + singleLabel
+    backButton.tooltip = "Show all " + pluralLabel
+  }
+
   private def createFormPanel() = {
-    val panel = new MigPanel("fill, ins 0", "[][][]", "[grow 0][fill][grow 0]") {
-      add(backButton, "wrap")
-      add(formComponent, "span 3, growx, wrap")
-      add(saveButton, "")
-      add(deleteButton, "")
-      add(copyButton, "")
+    val buttonBar = new MigPanel("fill, ins 0", "5[grow 0][grow][grow 0][grow 0][grow 0]5", "[grow 0]") {
+      add(backButton)
+      add(formLabel, "gap unrel")
+      add(saveButton)
+      add(deleteButton)
+      add(copyButton)
+    }
+    buttonBar.border = BorderFactory.createMatteBorder(0, 0, 1, 0, Color.BLACK)
+
+    val panel = new MigPanel("fill, ins 0", "[grow]", "[grow 0][fill]") {
+      add(buttonBar, "span 5, grow, wrap")
+      add(formComponent, "span 5, grow, push")
     }
     panel
   }
 
   private def createGroupPanel() = {
-    val panel = new MigPanel("") {
+    val panel = new MigPanel("fill, ins 3", "[grow][grow 0]", "[grow 0][fill]") {
+      add(listLabel)
       add(newButton, "wrap")
-      add(groupList)
+      add(new ScrollPane(groupList), "grow, span 2, push")
     }
     panel
   }
@@ -84,6 +104,7 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
     addCard(groupPanel, "group")
     addCard(formPanel, "form")
     showFormCard()
+    setHeaderLabels("Entry", "Entries")
 
     listenTo(groupList.selection, formComponent)
 
@@ -101,10 +122,11 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
   }
 
   private def createGroupList() = {
-    val list = new ListView[T]()
+    val list = new ListView[T]() {
+      renderer = ListView.Renderer[T, String](format)(ListView.Renderer.wrap(new DefaultListCellRenderer()))
+    }
     list.name = "group.list"
     list.selection.intervalMode = IntervalMode.Single
-    list.border = BorderFactory.createBevelBorder(1)
     list
   }
 
@@ -159,9 +181,9 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
     button
   }
 
-  private def duplicateEntry(pos: Int, data: Seq[T]) = data.take(pos+1) ++ data.drop(pos)
+  private def duplicateEntry(pos: Int, data: Seq[T]) = data.take(pos + 1) ++ data.drop(pos)
 
-  private def deleteEntry(pos: Int, data: Seq[T]) = data.take(pos) ++ data.drop(pos+1)
+  private def deleteEntry(pos: Int, data: Seq[T]) = data.take(pos) ++ data.drop(pos + 1)
 
   private def doSave() {
     val oldList = groupList.listData
@@ -170,6 +192,13 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T]) extend
     else
       formComponent.getEntry +: oldList
     groupList.listData = newList
+  }
+
+  private def createLabel(labelName: String, labelText: String) = {
+    val label = new Label(labelText)
+    label.name = labelName
+    label.horizontalAlignment = Alignment.Center
+    label
   }
 
   private def showGroupCard() {
