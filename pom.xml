@@ -102,7 +102,7 @@
         <dependency>
             <groupId>org.specs2</groupId>
             <artifactId>specs2_${scala.versionShort}</artifactId>
-            <version>2.3.4</version>
+            <version>2.3.7</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -188,6 +188,7 @@
                     <source>1.6</source>
                     <target>1.6</target>
                     <scalaVersion>${scala.version}</scalaVersion>
+                    <scalaCompatVersion>${scala.versionShort}</scalaCompatVersion>
                     <jvmArgs>
                         <jvmArg>-Xmx512m</jvmArg>
                         <jvmArg>-Xms64m</jvmArg>
