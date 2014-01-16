@@ -36,7 +36,8 @@ class GroupFormPanelTest extends UISpecTestCase {
 
   override def setUp() {
     super.setUp()
-    panel = new GroupFormPanel[People](new PeopleForm, _.asListView)
+    val form = new PeopleForm
+    panel = new GroupFormPanel[People](form, form, _.asListView)
     setAdapter(new UISpecAdapter() {
       def getMainWindow: Window = {
         val frame = new Frame {
@@ -295,7 +296,7 @@ object GroupFormPanelTest {
   }
 
 
-  class PeopleForm extends MigPanel("fillx, ins panel", "[]rel[grow]", "[][]") with GroupFormPanel.Form[People] {
+  class PeopleForm extends MigPanel("fillx, ins panel", "[]rel[grow]", "[][]") with GroupFormPanel.Presenter[People] {
     val nameField = new TextField()
     nameField.name = "form.name"
     val ageField = new TextField()

@@ -26,7 +26,7 @@ import java.awt.Color
 
 object GroupFormPanel {
 
-  trait Form[T] extends Publisher {
+  trait Presenter[T] extends Publisher {
     def setEntry(entry: T)
 
     def getEntry: T
@@ -42,7 +42,7 @@ object GroupFormPanel {
 
 }
 
-class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format: T => String) extends CardPanel {
+class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.Presenter[T], format: T => String) extends CardPanel {
   private val groupList = createGroupList()
   private val backButton = createBackButton()
   private val saveButton = createSaveButton()
@@ -57,6 +57,9 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format
 
   init()
 
+  def this(unifiedForm: Component with GroupFormPanel.Presenter[T], format: T => String) =
+    this(unifiedForm, unifiedForm, format)
+  
   def setContent(newContent: Seq[T]) {
     groupList.listData = newContent
     showGroupCard()
@@ -112,12 +115,12 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format
       case ListSelectionChanged(this.groupList, range, false) if !currentSelectedEntry.isDefined =>
         currentSelectedEntry = groupList.selection.indices.headOption
         if (currentSelectedEntry.isDefined)
-          formComponent.setEntry(groupList.listData(currentSelectedEntry.get))
+          formPresenter.setEntry(groupList.listData(currentSelectedEntry.get))
         showFormCard()
       case FormValueChanged(this.formComponent, valid) =>
         saveButton.enabled = valid
       case FormSave(this.formComponent) =>
-        if (formComponent.isValid) doSave()
+        if (formPresenter.isValid) doSave()
     }
   }
 
@@ -153,7 +156,7 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format
 
   private def createNewButton() = {
     val button = new Button(Action("") {
-      formComponent.clear()
+      formPresenter.clear()
       showFormCard()
     })
     button.name = "group.newButton"
@@ -188,9 +191,9 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format
   private def doSave() {
     val oldList = groupList.listData
     val newList: Seq[T] = if (currentSelectedEntry.isDefined)
-      oldList.updated(groupList.selection.leadIndex, formComponent.getEntry)
+      oldList.updated(groupList.selection.leadIndex, formPresenter.getEntry)
     else
-      formComponent.getEntry +: oldList
+      formPresenter.getEntry +: oldList
     groupList.listData = newList
   }
 
@@ -206,7 +209,7 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format
     groupList.selection.indices.clear()
     currentSelectedEntry = None
     if (groupList.listData.isEmpty) {
-      formComponent.clear()
+      formPresenter.clear()
       showFormCard()
     } else
       showCard("group")
@@ -215,7 +218,7 @@ class GroupFormPanel[T](formComponent: Panel with GroupFormPanel.Form[T], format
   private def showFormCard() {
     val isOldEntry = currentSelectedEntry.isDefined
     deleteButton.enabled = isOldEntry
-    saveButton.enabled = formComponent.isValid
+    saveButton.enabled = formPresenter.isValid
     backButton.enabled = !groupList.listData.isEmpty
     copyButton.enabled = currentSelectedEntry.isDefined
     showCard("form")
