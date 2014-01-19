@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2013-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,9 @@ object DamageEffectEditor {
 
     def setDamageText(damage: String)
 
+    def getDamageText:String
+
+    def getConditionText: String
   }
 
   case class Memento(damage: String, condition: String) {
@@ -47,6 +50,10 @@ class DamageEffectEditor(presenter: DamageEffectEditorPresenter) extends MigPane
   def setConditionText(condition: String) {
     conditionField.text = condition
   }
+
+  def getDamageText: String = damageField.text
+
+  def getConditionText: String = conditionField.text
 
   private def init() {
     presenter.bind(this)

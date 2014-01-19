@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2013-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,29 +19,51 @@ package vcc.dnd4e.view
 import org.specs2.SpecificationWithJUnit
 import org.specs2.mock.Mockito
 import vcc.dnd4e.view.DamageEffectEditor.Memento
+import scala.util.Random
 
 class DamageEffectEditorPresenterTest extends SpecificationWithJUnit with Mockito {
 
   def is = s2"""
     setting memento will updated view fields ${s().e1}
     clearing memento will clear view fields ${s().e2}
+    setting a valid damage should make form valid ${s().e3}
+    setting a invalid damage should make form invalid ${s().e31}
+    getEntry will collect fields form view ${s().e4}
   """
 
   case class s() {
     val (presenter, view) = makePresenter()
 
     def e1 = {
-      presenter.setMemento(Some(Memento("damage", "condition")))
+      presenter.setEntry(Memento("damage", "condition"))
 
       (there was one(view).setDamageText("damage")) and
         (there was one(view).setConditionText("condition"))
     }
 
     def e2 = {
-      presenter.setMemento(None)
+      presenter.clear()
 
       (there was one(view).setDamageText("")) and
         (there was one(view).setConditionText(""))
+    }
+
+    def e3 = {
+      val dice: String = genDice()
+      println("Dice: " + dice)
+      (presenter.validateDamage(dice) must beTrue) and (presenter.isValid must beTrue)
+    }
+
+    def e31 = {
+      (presenter.validateDamage("xx" + System.currentTimeMillis) must beFalse) and
+        (presenter.isValid must beFalse)
+    }
+
+    def e4 = {
+      view.getConditionText returns "Condition"
+      view.getDamageText returns "2d8+7"
+
+      presenter.getEntry must_== Memento("Condition", "2d8+7")
     }
   }
 
@@ -51,4 +73,8 @@ class DamageEffectEditorPresenterTest extends SpecificationWithJUnit with Mockit
     presenter.bind(mockView)
     (presenter, mockView)
   }
+
+  private def genDice() = s"${random()}d${random()}+${random()}"
+
+  private def random():Int = Random.nextInt(10) + 1
 }

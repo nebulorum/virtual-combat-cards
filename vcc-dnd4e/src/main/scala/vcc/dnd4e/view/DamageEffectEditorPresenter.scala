@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2013-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,21 +16,34 @@
  */
 package vcc.dnd4e.view
 
-class DamageEffectEditorPresenter {
+import vcc.dnd4e.view.DamageEffectEditor.Memento
+
+class DamageEffectEditorPresenter extends GroupFormPanel.Presenter[Memento] {
 
   private var view: DamageEffectEditor.View = null
+  private var formValid = false
+  private val diceRE = """^\d+d\d+\+\d+$""".r
 
   def bind(view: DamageEffectEditor.View) {
     this.view = view
   }
 
-  def setMemento(memento:Option[DamageEffectEditor.Memento]) {
-    if(!memento.isDefined) {
-      view.setDamageText("")
-      view.setConditionText("")
-    } else {
-      view.setDamageText(memento.get.damage)
-      view.setConditionText(memento.get.condition)
-    }
+  def setEntry(entry: Memento) {
+    view.setDamageText(entry.damage)
+    view.setConditionText(entry.condition)
+  }
+
+  def getEntry = Memento(view.getConditionText, view.getDamageText)
+
+  def clear(): Unit = {
+    view.setDamageText("")
+    view.setConditionText("")
+  }
+
+  def isValid = formValid
+
+  def validateDamage(damage: String):Boolean = {
+    formValid = diceRE.pattern.matcher(damage).matches()
+    isValid
   }
 }
