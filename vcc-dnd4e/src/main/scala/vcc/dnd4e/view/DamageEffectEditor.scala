@@ -17,51 +17,61 @@
 package vcc.dnd4e.view
 
 import vcc.util.swing.MigPanel
-import scala.swing.TextField
+import scala.swing.{Label, TextField}
+import vcc.dnd4e.view.DamageEffectEditor.Memento
+import scala.swing.event.ValueChanged
+import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
 
 object DamageEffectEditor {
-
-  trait View {
-    def setConditionText(condition: String)
-
-    def setDamageText(damage: String)
-
-    def getDamageText:String
-
-    def getConditionText: String
-  }
 
   case class Memento(damage: String, condition: String) {
     def asListText = damage + "; " + condition
   }
 }
 
-class DamageEffectEditor(presenter: DamageEffectEditorPresenter) extends MigPanel("fillx", "[fill,grow]", "") with DamageEffectEditor.View {
+class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "")
+  with GroupFormPanel.Presenter[Memento] {
 
+  private val diceRE = """^\d+d\d+\+\d+$""".r
   private val damageField = new TextField()
   private val conditionField = new TextField()
 
   init()
 
-  def setDamageText(damage: String) {
-    damageField.text = damage
+  listenTo(damageField)
+  reactions += {
+    case ValueChanged(this.damageField) =>
+      publish(FormValueChanged(this, isValid))
   }
-
-  def setConditionText(condition: String) {
-    conditionField.text = condition
-  }
-
-  def getDamageText: String = damageField.text
-
-  def getConditionText: String = conditionField.text
 
   private def init() {
-    presenter.bind(this)
-
     damageField.name = "dee.damage"
+    add(new Label("Damage:"), "wrap")
     add(damageField, "wrap")
 
     conditionField.name = "dee.condition"
+    add(new Label("Condition:"), "wrap")
     add(conditionField, "wrap")
+  }
+
+  def setEntry(entry: Memento) {
+    damageField.text = entry.damage
+    conditionField.text = entry.condition
+  }
+
+  def getEntry: Memento = {
+    Memento(
+      damageField.text,
+      conditionField.text
+    )
+  }
+
+  def clear(): Unit = {
+    damageField.text = ""
+    conditionField.text = ""
+  }
+
+  def isValid: Boolean = {
+    diceRE.pattern.matcher(damageField.text).matches()
   }
 }
