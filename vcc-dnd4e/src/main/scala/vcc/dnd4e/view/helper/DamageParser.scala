@@ -17,6 +17,7 @@
 package vcc.dnd4e.view.helper
 
 import scala.util.parsing.combinator._
+import vcc.dnd4e.util.DiceBag
 
 object DamageParser extends JavaTokenParsers {
 
@@ -36,6 +37,12 @@ object DamageParser extends JavaTokenParsers {
     def simplify(): Term = this
 
     def apply(definitions: Map[String, Int]): Int = definitions.getOrElse(s, 0)
+  }
+
+  case class DiceTerm(count: Int, size: Int) extends Term {
+    def simplify(): Term = this
+
+    def apply(definitions: Map[String, Int]): Int = (1 to count).map(_ => DiceBag.D(size)).sum
   }
 
   case class Op(op: String, l: Term, r: Term) extends Term {
@@ -65,33 +72,44 @@ object DamageParser extends JavaTokenParsers {
   }
 
   def reduceListOfOp(list: ~[Term, List[~[String, Term]]]): Term = {
-    def reduceOp(l: Term, olist: List[~[String, Term]]): Term = {
-      olist match {
+    def reduceOp(l: Term, opRepeat: List[~[String, Term]]): Term = {
+      opRepeat match {
         case Nil => l
         case op ~ r :: rest => reduceOp(Op(op, l, r), rest)
       }
     }
-    list match {
-      case v ~ Nil => v
-      case v ~ rest => reduceOp(v, rest)
-    }
+    reduceOp(list._1, list._2)
   }
 
-  def expr: Parser[Term] = term ~ rep("+" ~ term | "-" ~ term) ^^ { reduceListOfOp }
+  def expr(allowedFactors: Parser[Term]): Parser[Term] = term(allowedFactors) ~ rep("+" ~ term(allowedFactors) | "-" ~ term(allowedFactors)) ^^ { reduceListOfOp }
 
-  def term: Parser[Term] = factor ~ rep("*" ~ factor | "/" ~ factor) ^^ { reduceListOfOp }
+  def term(allowedFactors: Parser[Term]): Parser[Term] = allowedFactors ~ rep("*" ~ allowedFactors | "/" ~ allowedFactors) ^^ { reduceListOfOp }
 
-  def factor: Parser[Term] = wholeNumber ^^ { x => NumberTerm(x.toInt)} |
-    """[sbSB]""".r ^^ { s => SymbolTerm(s.toLowerCase) } |
-    "(" ~ expr ~ ")" ^^ { case "(" ~ e ~ ")" => e }
+  private def factor: Parser[Term] = number | symbol | parenthesis(factor)
 
-  def parseString(str: String): Term = {
-    val pr = parseAll(expr, str)
+  private def diceFactor: Parser[Term] = dice | number | parenthesis(diceFactor)
+
+  private def parenthesis(allowedFactors: Parser[Term]) = "(" ~ expr(allowedFactors) ~ ")" ^^ { case "(" ~ e ~ ")" => e }
+  private val diceMatcher = """(\d*)d(\d+)""".r
+
+  private val dice: Parser[Term] = diceMatcher ^^ {
+    case diceMatcher(n, s) => DiceTerm(if (n == "") 1 else n.toInt, s.toInt)
+  }
+
+  private val number: Parser[Term] = wholeNumber ^^ { x => NumberTerm(x.toInt)}
+
+  private val symbol: Parser[Term] = """[sbSB]""".r ^^ { s => SymbolTerm(s.toLowerCase) }
+
+  def parseSymbolicExpression(str: String) = parseToEither(str, factor)
+
+  def parseDamageExpression(str: String) = parseToEither(str, diceFactor)
+
+  private def parseToEither(input: String, factor: Parser[Term]): Either[String, Term] = {
+    val pr = parseAll(expr(factor), input)
     if (pr.successful) {
-      pr.get
+      Right(pr.get)
     } else {
-      throw new Exception("Failed parse" + pr.toString)
+      Left("Failed parse" + pr.toString)
     }
   }
 }
-

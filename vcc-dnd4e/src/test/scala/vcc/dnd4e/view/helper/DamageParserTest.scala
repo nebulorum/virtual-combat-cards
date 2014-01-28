@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2013-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,20 +23,58 @@ class DamageParserTest extends SpecificationWithJUnit with DataTables {
 
   import DamageParser._
 
-  def is = "base parsers" ! baseMatcher
+  def is =
+    "base parsers" ! baseMatcher ^
+      "damage generator parsers" ! damageParser ^
+    "some error case" ! invalidInputs
+
 
   def baseMatcher = {
     "term" | "parsed" |
       "2 + 3" !! opAdd(2, 3) |
+      "2 - 4" !! opSub(2, 4) |
       "2 * S + 4" !! opAdd(Op("*", 2, "s"), 4) |
       "2 * (b + 1) + 4" !! opAdd(Op("*", 2, opAdd("b", 1)), 4) |
       "1 + 2 + 3 + S" !! opAdd(opAdd(opAdd(1, 2), 3), "s") |
       "41" !! NumberTerm(41) |> {
-      (input: String, term: Term) => DamageParser.parseString(input) must_== term
+      (input: String, term: Term) => DamageParser.parseSymbolicExpression(input) must_== Right(term)
     }
   }
 
-  implicit private def i(v:Int):Term = NumberTerm(v)
-  implicit private def s(s:String):Term = SymbolTerm(s.toLowerCase)
-  private def opAdd(l:Term, r:Term) = Op("+",l , r)
+  def damageParser = {
+    "expression" | "parsed" |
+      "2 + 3" !! opAdd(2, 3) |
+      "2d6" !! d(2, 6) |
+      "d6" !! d(1, 6) |
+      "d6 - 2" !! opSub(d(1, 6), 2) |
+      "2d10+7" !! opAdd(d(2, 10), 7) |
+      "d6 + 2d4 + 5" !! opAdd(opAdd(d(1, 6), d(2, 4)), 5) |
+      "(1d6 + 1) * 3" !! Op("*", opAdd(d(1, 6), 1), 3) |
+      "1d8" !! d(1, 8) |
+      "43" !! NumberTerm(43) |> {
+      (input: String, term: Term) => DamageParser.parseDamageExpression(input) must_== Right(term)
+    }
+  }
+
+  def invalidInputs = {
+    "expression" | "isDamage" |
+    "2 + a" !! true |
+    "2 + s" !! true |
+    "2 + 1d4" !! false |
+    "2 + a" !! false |> {
+      (input, isDamage) =>
+        val result = if(isDamage) DamageParser.parseDamageExpression(input) else DamageParser.parseSymbolicExpression(input)
+        result must beLeft
+    }
+  }
+
+  implicit private def i(v: Int): Term = NumberTerm(v)
+
+  implicit private def s(s: String): Term = SymbolTerm(s.toLowerCase)
+
+  implicit private def d(n: Int, s: Int): Term = DiceTerm(n, s)
+
+  private def opAdd(l: Term, r: Term) = Op("+", l, r)
+
+  private def opSub(l: Term, r: Term) = Op("-", l, r)
 }

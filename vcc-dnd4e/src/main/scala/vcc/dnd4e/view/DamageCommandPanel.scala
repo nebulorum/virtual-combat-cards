@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,9 +61,8 @@ class DamageCommandPanel(val director: PanelDirector)
 
   private def makeAction(msg: String, term: DamageParser.Term, builder: (CombatantID, Int) => CombatStateAction) = {
     new UnifiedCombatantActionTransfer(msg, {
-      case tgt => {
+      case tgt =>
         dispatchAction(tgt, director, term, builder)
-      }
     })
   }
 
@@ -81,7 +80,7 @@ class DamageCommandPanel(val director: PanelDirector)
   private val controls = List(damage, damage_btn, heal_btn, temp_btn, death_btn, undie_btn)
   private val damageRelButton = List(damage_btn, heal_btn, temp_btn)
 
-  private var damageEquation: DamageParser.Term = null
+  private var damageEquation: Option[DamageParser.Term] = None
 
   add(new Label("Hit Points:"))
   add(damage, "wrap")
@@ -97,12 +96,8 @@ class DamageCommandPanel(val director: PanelDirector)
 
   reactions += {
     case ValueChanged(this.damage) =>
-      damageEquation = try {
-        DamageParser.parseString(damage.text)
-      } catch {
-        case _: Exception => null
-      }
-      enableDamageControls(damageEquation != null)
+      damageEquation = DamageParser.parseSymbolicExpression(damage.text).right.toOption
+      enableDamageControls(damageEquation.isDefined)
     case FocusGained(this.damage, other, temporary) =>
       director.setStatusBarMessage("Enter equation with: + - * / and parenthesis and variable: 's' for surge value ; 'b' for bloody value")
       damage.selectAll()
@@ -115,25 +110,24 @@ class DamageCommandPanel(val director: PanelDirector)
     case ButtonClicked(this.undie_btn) =>
       director requestAction RevertDeath(target.get.combId)
 
-    case ButtonClicked(button) if (damageEquation != null) => {
+    case ButtonClicked(button) if damageEquation.isDefined =>
       val tgt = combatState.combatantOption(target).get
-      dispatchAction(tgt, director, damageEquation, button match {
+      dispatchAction(tgt, director, damageEquation.get, button match {
         case this.damage_btn => (cid, hp) => ApplyDamage(cid, hp)
         case this.heal_btn => (cid, hp) => HealDamage(cid, hp)
         case this.temp_btn => (cid, hp) => SetTemporaryHP(cid, hp)
       })
-    }
   }
 
   val dc = new DragAndDropController(IconLibrary.MiniWand)
   dc.enableDragToCopy(DragAndDropSource.fromButton(damage_btn, () => {
-    makeAction("Apply " + damage.text + " hit points of damage", damageEquation, (cid, hp) => ApplyDamage(cid, hp)).toTransferable
+    makeAction("Apply " + damage.text + " hit points of damage", damageEquation.get, (cid, hp) => ApplyDamage(cid, hp)).toTransferable
   }))
   dc.enableDragToCopy(DragAndDropSource.fromButton(heal_btn, () => {
-    makeAction("Heal " + damage.text + " hit points", damageEquation, (cid, hp) => HealDamage(cid, hp)).toTransferable
+    makeAction("Heal " + damage.text + " hit points", damageEquation.get, (cid, hp) => HealDamage(cid, hp)).toTransferable
   }))
   dc.enableDragToCopy(DragAndDropSource.fromButton(temp_btn, () => {
-    makeAction("Set " + damage.text + " temporary hit points ", damageEquation, (cid, hp) => SetTemporaryHP(cid, hp)).toTransferable
+    makeAction("Set " + damage.text + " temporary hit points ", damageEquation.get, (cid, hp) => SetTemporaryHP(cid, hp)).toTransferable
   }))
 
   def enableDamageControls(enable: Boolean) {
@@ -144,15 +138,15 @@ class DamageCommandPanel(val director: PanelDirector)
 
   override def changeTargetContext(newContext: Option[UnifiedCombatantID]) {
     target = newContext
-    controls map (x => x.enabled = (target != None))
+    controls map (x => x.enabled = target.isDefined)
     enableDamageControls(damageEquation != null)
   }
 
   def getRootPane = this.peer.getRootPane
 
   def registerKeystroke() {
-    KeystrokeBinder.bindKeystrokeAction(damage_btn, true, KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt D", new ClickButtonAction("health.damage", damage_btn))
-    KeystrokeBinder.bindKeystrokeAction(heal_btn, true, KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt H", new ClickButtonAction("health.heal", heal_btn))
-    KeystrokeBinder.bindKeystrokeAction(temp_btn, true, KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt T", new ClickButtonAction("health.settemphp", temp_btn))
+    KeystrokeBinder.bindKeystrokeAction(damage_btn, bindToRootPane = true, KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt D", new ClickButtonAction("health.damage", damage_btn))
+    KeystrokeBinder.bindKeystrokeAction(heal_btn, bindToRootPane = true, KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt H", new ClickButtonAction("health.heal", heal_btn))
+    KeystrokeBinder.bindKeystrokeAction(temp_btn, bindToRootPane = true, KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt T", new ClickButtonAction("health.settemphp", temp_btn))
   }
 }
