@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,5 +63,14 @@ object AutoCompleteDictionary {
       }
     }
     new AutoCompleteDictionary(words.toList)
+  }
+
+  def loadFromResource(resourceURL: String, warningHandler: (String, String) => Unit):Option[AutoCompleteDictionary] = {
+    val is = this.getClass.getResourceAsStream(resourceURL)
+    if(is == null) {
+      None
+    } else {
+      Some(AutoCompleteDictionary.fromStream(is, warningHandler))
+    }
   }
 }

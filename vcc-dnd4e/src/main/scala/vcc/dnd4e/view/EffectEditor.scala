@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,21 @@ abstract class DurationComboEntry(text: String) {
   override def toString: String = text
 }
 
+object DurationComboEntry {
+  val durations = List(
+    new BoundDurationComboEntry("End of source's next turn", Duration.Limit.EndOfNextTurn, true),
+    new BoundDurationComboEntry("End of source's next turn, sustain", Duration.Limit.EndOfNextTurnSustain, true),
+    new BoundDurationComboEntry("Start of source's next turn", Duration.Limit.StartOfNextTurn, true),
+    new StaticDurationComboEntry("End of Encounter", Duration.EndOfEncounter),
+    new StaticDurationComboEntry("Stance", Duration.Stance),
+    new StaticDurationComboEntry("Rage", Duration.Rage),
+    new StaticDurationComboEntry("Save End", Duration.SaveEnd),
+    new StaticDurationComboEntry("Save End (Special)", Duration.SaveEndSpecial),
+    new StaticDurationComboEntry("Other", Duration.Other),
+    new BoundDurationComboEntry("End of target's next turn", Duration.Limit.EndOfNextTurn, false),
+    new BoundDurationComboEntry("Start of target's next turn", Duration.Limit.StartOfNextTurn, false))
+}
+
 class StaticDurationComboEntry(text: String, duration: Duration) extends DurationComboEntry(text) {
   def isDefinedAt(source: UnifiedCombatant, target: UnifiedCombatant): Boolean = true
 
@@ -65,37 +80,13 @@ object EffectEditor {
 
   case class StateMemento(spIdx: Int, spMemento: Any, durIdx: Int, benef: Boolean)
 
-  private val durations = List(
-    new BoundDurationComboEntry("End of source's next turn", Duration.Limit.EndOfNextTurn, true),
-    new BoundDurationComboEntry("End of source's next turn, sustain", Duration.Limit.EndOfNextTurnSustain, true),
-    new BoundDurationComboEntry("Start of source's next turn", Duration.Limit.StartOfNextTurn, true),
-    new StaticDurationComboEntry("End of Encounter", Duration.EndOfEncounter),
-    new StaticDurationComboEntry("Stance", Duration.Stance),
-    new StaticDurationComboEntry("Rage", Duration.Rage),
-    new StaticDurationComboEntry("Save End", Duration.SaveEnd),
-    new StaticDurationComboEntry("Save End (Special)", Duration.SaveEndSpecial),
-    new StaticDurationComboEntry("Other", Duration.Other),
-    new BoundDurationComboEntry("End of target's next turn", Duration.Limit.EndOfNextTurn, false),
-    new BoundDurationComboEntry("Start of target's next turn", Duration.Limit.StartOfNextTurn, false)
-  )
-
   val dictionary: AutoCompleteDictionary = {
     val logger = LoggerFactory.getLogger("startup")
-    val resource = this.getClass.getResource("/vcc/dnd4e/view/autocomplete.dict")
-    if (resource != null) {
-      val is = resource.openStream()
-      try {
-        AutoCompleteDictionary.fromStream(is, (term, msg) => {
-          logger.warn("AutoComplete[{}]: {}", Array(term, msg))
-        })
-      } catch {
-        case e: Exception =>
-          logger.warn("Failed to open resource: /vcc/dnd4e/view/autocomplete.dict", e)
-          new AutoCompleteDictionary(Nil)
-      } finally {
-        is.close()
-      }
-    } else {
+
+    AutoCompleteDictionary.loadFromResource("/vcc/dnd4e/view/autocomplete.dict", (term, msg) => {
+      logger.warn("AutoComplete[{}]: {}", Array(term, msg))
+    }).getOrElse {
+      logger.warn("Failed to open resource: /vcc/dnd4e/view/autocomplete.dict")
       new AutoCompleteDictionary(Nil)
     }
   }
@@ -169,7 +160,7 @@ class EffectEditor(parent: EffectEditorPanel) extends MigPanel("fillx, gap 2 2, 
 
   private val idComboModel = new ContainerComboBoxModel[CombatantID](Nil)
 
-  private val durationCombo = new ComboBox[DurationComboEntry](EffectEditor.durations) {
+  private val durationCombo = new ComboBox[DurationComboEntry](DurationComboEntry.durations) {
     font = smallFont
   }
   private val benefCheckbox = new CheckBox("Beneficial")
@@ -211,7 +202,7 @@ class EffectEditor(parent: EffectEditorPanel) extends MigPanel("fillx, gap 2 2, 
 
     new UnifiedCombatantActionTransfer(
     condition.description, {
-      case tgt if (durationBuilder.isDefinedAt(src, tgt)) =>
+      case tgt if durationBuilder.isDefinedAt(src, tgt) =>
         parent.createEffect(tgt, condition, durationBuilder.generate(src, tgt), beneficial)
     }).toTransferable
   }))
@@ -222,7 +213,7 @@ class EffectEditor(parent: EffectEditorPanel) extends MigPanel("fillx, gap 2 2, 
   reactions += {
     case event.SelectionChanged(this.typeCombo) =>
       for (p <- subPanels) {
-        p.visible = (p equals typeCombo.selection.item)
+        p.visible = p equals typeCombo.selection.item
       }
     case event.SelectionChanged(this.durationCombo) =>
       checkAddButton()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,6 +98,31 @@ class AutoCompleteDictionaryTest extends SpecificationWithJUnit with Mockito {
       val toRead = new ByteArrayInputStream("# comment\n  second  \n".getBytes)
       val dict = AutoCompleteDictionary.fromStream(toRead, callback)
       dict.findSuggestion("# co") must_== None
+    }
+  }
+
+  "AutoComplete load helper" should {
+    "return dictionary on valid resource" in {
+      AutoCompleteDictionary.loadFromResource("missing.dict", null) must beNone
+    }
+
+    "return dictionary on valid resource" in {
+      val callback = mock[(String, String) => Unit]
+
+      val dict = AutoCompleteDictionary.loadFromResource("dict1.dict", callback).get
+
+      dict.findSuggestion("fi") must_== Some("first")
+      dict.findSuggestion("se") must_== Some("second")
+    }
+
+    "return dictionary on valid resource with warning" in {
+      val callback = mock[(String, String) => Unit]
+
+      val dict = AutoCompleteDictionary.loadFromResource("dict2.dict", callback).get
+
+      dict.findSuggestion("fi") must_== Some("first attack")
+      dict.findSuggestion("se") must_== Some("second attack")
+      there was one(callback).apply("second chance", "Prefix 'second' already defined")
     }
   }
 }
