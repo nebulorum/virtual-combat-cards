@@ -23,6 +23,7 @@ import scala.swing.ListView.IntervalMode
 import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
 import javax.swing.{DefaultListCellRenderer, BorderFactory}
 import java.awt.Color
+import org.exnebula.macify.Macify
 
 object GroupFormPanel {
 
@@ -78,7 +79,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
   }
 
   private def createFormPanel() = {
-    val buttonBar = new MigPanel("fill, ins 0", "5[grow 0][grow][grow 0][grow 0][grow 0]5", "[grow 0]") {
+    val buttonBar = new MigPanel("fill, ins 0", "5[grow 0][grow][grow 0][grow 0][grow 0]5", "3[grow 0]3[grow 100]") {
       add(backButton)
       add(formLabel, "gap unrel")
       add(saveButton)
@@ -140,6 +141,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
     })
     button.name = "form.back"
     button.icon = IconLibrary.ThreeBarIcon
+    decorateButton(button)
     button
   }
 
@@ -151,6 +153,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
     button.name = "form.save"
     button.enabled = false
     button.icon = IconLibrary.DiskIcon
+    decorateButton(button)
     button
   }
 
@@ -161,6 +164,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
     })
     button.name = "group.newButton"
     button.icon = IconLibrary.AddIcon
+    decorateButton(button)
     button
   }
 
@@ -171,6 +175,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
     })
     button.name = "form.delete"
     button.icon = IconLibrary.DeleteIcon
+    decorateButton(button)
     button
   }
 
@@ -181,6 +186,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
     button.name = "form.copy"
     button.icon = IconLibrary.PageCopyIcon
     button.enabled = false
+    decorateButton(button)
     button
   }
 
@@ -222,5 +228,10 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
     backButton.enabled = !groupList.listData.isEmpty
     copyButton.enabled = currentSelectedEntry.isDefined
     showCard("form")
+  }
+
+  private def decorateButton(button: Button) {
+    if(!Macify.isMac)
+      button.margin = new Insets(2,2,2,2)
   }
 }
