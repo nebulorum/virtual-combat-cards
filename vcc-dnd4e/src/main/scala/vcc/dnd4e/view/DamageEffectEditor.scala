@@ -16,62 +16,154 @@
  */
 package vcc.dnd4e.view
 
-import vcc.util.swing.MigPanel
-import scala.swing.{Label, TextField}
-import vcc.dnd4e.view.DamageEffectEditor.Memento
+import vcc.util.swing.{AutoCompleteDictionary, AutoCompleteTextComponent, MigPanel}
+import scala.swing._
+import vcc.dnd4e.view.DamageEffectEditor.Mark
 import scala.swing.event.ValueChanged
+import org.slf4j.LoggerFactory
 import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
+import scala.swing.event.ButtonClicked
+import scala.Some
+import vcc.dnd4e.view.DamageEffectEditor.Memento
 
 object DamageEffectEditor {
 
-  case class Memento(damage: String, condition: String) {
-    def asListText = damage + "; " + condition
+  object Mark extends Enumeration {
+    val None = Value("No Mark")
+    val Regular = Value("Mark")
+    val Permanent = Value("Permanent Mark")
+  }
+
+  case class Memento(name: Option[String], damage: Option[String], condition: Option[String],
+                     mark: Mark.Value = Mark.None,
+                     duration: DurationComboEntry = DurationComboEntry.durations.head) {
+    def asListText = s"""<html><body style="font-weight: normal"><strong>${name.getOrElse("-")}</strong><br/>&nbsp;$formattedDamage${condition.getOrElse("")}<br>&nbsp;${duration.toString}</body></html>"""
+
+    private def formattedDamage = if(damage.isDefined) damage.get + "; " else ""
   }
 }
 
-class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "")
+class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][]unrel[][]")
   with GroupFormPanel.Presenter[Memento] {
 
   private val diceRE = """^\d+d\d+\+\d+$""".r
+  private val nameField = new TextField()
   private val damageField = new TextField()
-  private val conditionField = new TextField()
+  private val conditionField = new TextField() with AutoCompleteTextComponent
+  private val markCheckbox = new CheckBox("Mark")
+  private val permanentMarkCheckbox = new CheckBox("Can't be Superseded")
+  private val durationCombo = new ComboBox[DurationComboEntry](DurationComboEntry.durations)
 
   init()
 
-  listenTo(damageField)
+  listenTo(damageField, markCheckbox, conditionField)
   reactions += {
     case ValueChanged(this.damageField) =>
       publish(FormValueChanged(this, isValid))
+    case ButtonClicked(this.markCheckbox) =>
+      adjustMarkCheckboxes()
+      toggleDurationCombo()
+    case ValueChanged(this.conditionField) =>
+      toggleDurationCombo()
   }
 
+  private def createLabel(labelText: String): Label = {
+    val label = new Label(labelText)
+    label.xAlignment = Alignment.Leading
+    label
+  }
   private def init() {
+    nameField.name = "dee.name"
+    add(createLabel("Name:"), "wrap")
+    add(nameField, "gap unrel, wrap")
+
     damageField.name = "dee.damage"
-    add(new Label("Damage:"), "wrap")
-    add(damageField, "wrap")
+    add(createLabel("Damage:"), "wrap")
+    add(damageField, "gap unrel, wrap")
 
     conditionField.name = "dee.condition"
-    add(new Label("Condition:"), "wrap")
-    add(conditionField, "wrap")
+    conditionField.enableAutoComplete(loadAutoCompleteDictionary())
+    add(createLabel("Condition:"), "wrap")
+    add(conditionField, "gap unrel, wrap")
+
+    markCheckbox.name = "dee.mark"
+    add(markCheckbox, "split 2, gap unrel")
+
+    permanentMarkCheckbox.enabled = false
+    permanentMarkCheckbox.name = "dee.permanentMark"
+    add(permanentMarkCheckbox, "wrap")
+
+    add(createLabel("Duration:"), "wrap")
+    durationCombo.name = "dee.duration"
+    durationCombo.enabled = false
+    add(durationCombo, "gap unrel, wrap")
   }
 
   def setEntry(entry: Memento) {
-    damageField.text = entry.damage
-    conditionField.text = entry.condition
+    nameField.text = entry.name.getOrElse("")
+    damageField.text = entry.damage.getOrElse("")
+    conditionField.text = entry.condition.getOrElse("")
+    markCheckbox.selected = entry.mark != Mark.None
+    permanentMarkCheckbox.selected = entry.mark == Mark.Permanent
+    durationCombo.selection.item = entry.duration
+    adjustMarkCheckboxes()
   }
 
   def getEntry: Memento = {
     Memento(
-      damageField.text,
-      conditionField.text
+      fieldAsOption(nameField),
+      fieldAsOption(damageField),
+      fieldAsOption(conditionField),
+      markValue,
+      durationCombo.selection.item
     )
   }
 
   def clear(): Unit = {
     damageField.text = ""
     conditionField.text = ""
+    nameField.text = ""
+    markCheckbox.selected = false
+    adjustMarkCheckboxes()
   }
 
   def isValid: Boolean = {
-    diceRE.pattern.matcher(damageField.text).matches()
+    diceRE.pattern.matcher(damageField.text).matches() || isWhiteSpace(damageField.text)
   }
+
+  private def fieldAsOption(field: TextField):Option[String] = if(isWhiteSpace(field.text)) None else Some(field.text)
+
+  private def adjustMarkCheckboxes() {
+    if (markCheckbox.selected) {
+      permanentMarkCheckbox.enabled = true
+    } else {
+      permanentMarkCheckbox.enabled = false
+      permanentMarkCheckbox.selected = false
+    }
+  }
+
+  private def toggleDurationCombo() {
+    durationCombo.enabled = !isWhiteSpace(conditionField.text) || markCheckbox.selected
+  }
+
+  private def markValue: DamageEffectEditor.Mark.Value = {
+    import DamageEffectEditor.Mark
+
+    if(permanentMarkCheckbox.selected) Mark.Permanent
+    else if(markCheckbox.selected) Mark.Regular
+    else Mark.None
+  }
+
+  private def loadAutoCompleteDictionary(): AutoCompleteDictionary = {
+    val logger = LoggerFactory.getLogger("startup")
+
+    AutoCompleteDictionary.loadFromResource("/vcc/dnd4e/view/autocomplete.dict", (term, msg) => {
+      logger.warn("AutoComplete[{}]: {}", Array(term, msg))
+    }).getOrElse {
+      logger.warn("Failed to open resource: /vcc/dnd4e/view/autocomplete.dict")
+      new AutoCompleteDictionary(Nil)
+    }
+  }
+
+  private def isWhiteSpace(value: String) = value.forall(_.isWhitespace)
 }
