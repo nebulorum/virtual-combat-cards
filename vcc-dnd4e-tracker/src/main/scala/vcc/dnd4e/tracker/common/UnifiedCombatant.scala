@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +19,35 @@ package vcc.dnd4e.tracker.common
 
 /**
  * This identifier is used to search for UnifiedCombatant.
- * @param combId A valid CombatantID, this is always present
- * @param orderId An optional InitiativeOrderID that identifies the UnifiedCombatant as in initiative order, null if the
- * combatant is not in the initiative order.
  */
-case class UnifiedCombatantID(combId: CombatantID, orderId: InitiativeOrderID)
+sealed trait UnifiedCombatantID {
+  /**
+   *@return A valid CombatantID, this is always present
+   */
+  def combId: CombatantID
+
+  /**
+   * @return An optional InitiativeOrderID that identifies the UnifiedCombatant as in initiative order, null if the
+   * combatant is not in the initiative order.
+   */
+  def orderId: InitiativeOrderID
+
+  override def toString = s"UnifiedCombatantID($combId, $orderId)"
+}
+
+case class UnifiedInOrderCombatantID(orderId:InitiativeOrderID) extends UnifiedCombatantID {
+  def combId: CombatantID = orderId.combId
+}
+
+case class UnifiedNotInOrderCombatantId(combId: CombatantID) extends UnifiedCombatantID {
+  def orderId: InitiativeOrderID = null
+}
+
+object UnifiedCombatantID {
+  def apply(combId: CombatantID):UnifiedCombatantID = UnifiedNotInOrderCombatantId(combId)
+
+  def apply(orderId: InitiativeOrderID): UnifiedCombatantID = UnifiedInOrderCombatantID(orderId)
+}
 
 /**
  * This is a wrapper for the CombatantStateView with some simplifications to allow uniform access in the GUI components.
@@ -47,7 +71,7 @@ class UnifiedCombatant(val combId: CombatantID,
 
   def alias = combatant.definition.alias
 
-  def matches(ucid: UnifiedCombatantID) = ((ucid.combId == combId) && (ucid.orderId == orderId))
+  def matches(ucid: UnifiedCombatantID) = (ucid.combId == combId) && (ucid.orderId == orderId)
 
   def matches(opt: Option[UnifiedCombatantID]): Boolean = if (opt.isDefined) this.matches(opt.get) else false
 
@@ -55,11 +79,11 @@ class UnifiedCombatant(val combId: CombatantID,
 
   def matches(oid: InitiativeOrderID): Boolean = (oid != null) && (orderId == oid)
 
-  def unifiedId = UnifiedCombatantID(combId, this.orderId)
+  def unifiedId = if(this.orderId == null) UnifiedCombatantID(combId) else UnifiedCombatantID(this.orderId)
 
   def orderId: InitiativeOrderID = if (initiative != null) initiative.orderID else null
 
-  def isInOrder = (initiative != null)
+  def isInOrder = initiative != null
 
   override def toString: String = "UnifiedCombatant(" + combId.id + "/" + (if (orderId != null) orderId.toLabelString else "nio") + ")"
 }

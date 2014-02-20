@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ *  Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ class UnifiedSequenceTable(val elements: Array[UnifiedCombatant], val state: Com
   /**
    * Return the UnifiedCombatantID of the first combatant in the robin.
    */
-  def orderFirstId: Option[UnifiedCombatantID] = state.nextUp.map(orderId => UnifiedCombatantID(orderId.combId, orderId))
+  def orderFirstId: Option[UnifiedCombatantID] = state.nextUp.map(UnifiedCombatantID(_))
 
   def indexOf(id: UnifiedCombatantID): Option[Int] = {
     val index = elements.indexWhere(_.matches(id))
@@ -142,7 +142,7 @@ object UnifiedSequenceTable {
     }
 
     private def combatantNotInOrderSortedById(combatState: CombatState): Seq[CombatantID] = {
-      val notInOrder = Set[CombatantID]((combatState.allCombatantIDs filterNot (combatState.getInitiativeOrder.map(_.combId) contains)): _*)
+      val notInOrder = Set[CombatantID](combatState.allCombatantIDs filterNot (combatState.getInitiativeOrder.map(_.combId) contains): _*)
       notInOrder.toList.sortWith((a: CombatantID, b: CombatantID) => a.id < b.id)
     }
   }

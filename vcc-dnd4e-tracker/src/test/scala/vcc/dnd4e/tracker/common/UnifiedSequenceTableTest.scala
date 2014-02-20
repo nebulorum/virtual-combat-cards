@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,11 +34,11 @@ class UnifiedSequenceTableTest extends SpecificationWithJUnit {
   private val ita1 = InitiativeTracker(ioa1, 1, 0, InitiativeState.Waiting)
   private val itd0 = InitiativeTracker(iod0, 1, 0, InitiativeState.Waiting)
 
-  private val uci_A0 = UnifiedCombatantID(combA, ioa0)
-  private val uci_D0 = UnifiedCombatantID(combD, iod0)
-  private val uci_A1 = UnifiedCombatantID(combA, ioa1)
-  private val uci_B = UnifiedCombatantID(combB, null)
-  private val uci_C = UnifiedCombatantID(combC, null)
+  private val uci_A0 = UnifiedCombatantID(ioa0)
+  private val uci_D0 = UnifiedCombatantID(iod0)
+  private val uci_A1 = UnifiedCombatantID(ioa1)
+  private val uci_B = UnifiedCombatantID(combB)
+  private val uci_C = UnifiedCombatantID(combC)
 
   private val livingHealthTracker = HealthTracker.createTracker(MinionHealthDefinition)
 
@@ -141,7 +141,7 @@ class UnifiedSequenceTableTest extends SpecificationWithJUnit {
       val pairs: Seq[(CombatantID, Combatant)] = for (id <- ids) yield {
         val m = mock[Combatant]
         m.health returns livingHealthTracker
-        (id -> m)
+        id -> m
       }
       pairs.toMap
     }
