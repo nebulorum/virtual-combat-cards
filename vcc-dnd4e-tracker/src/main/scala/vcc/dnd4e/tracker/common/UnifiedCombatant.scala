@@ -32,15 +32,21 @@ sealed trait UnifiedCombatantID {
    */
   def orderId: InitiativeOrderID
 
+  def isInOrder: Boolean
+
   override def toString = s"UnifiedCombatantID($combId, $orderId)"
 }
 
 case class UnifiedInOrderCombatantID(orderId:InitiativeOrderID) extends UnifiedCombatantID {
   def combId: CombatantID = orderId.combId
+
+  val isInOrder = true
 }
 
 case class UnifiedNotInOrderCombatantId(combId: CombatantID) extends UnifiedCombatantID {
   def orderId: InitiativeOrderID = null
+
+  val isInOrder = false
 }
 
 object UnifiedCombatantID {

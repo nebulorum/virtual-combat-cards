@@ -29,7 +29,10 @@ import vcc.util.swing.dnd.{DragAndDropSource, DragAndDropController}
  * @param text To appear on the ComboBox
  */
 abstract class DurationComboEntry(text: String) {
-  def isDefinedAt(source: UnifiedCombatant, target: UnifiedCombatant): Boolean
+
+  def isDefinedAt(source: UnifiedCombatantID, target: UnifiedCombatantID) : Boolean
+
+  def isDefinedAt(source: UnifiedCombatant, target: UnifiedCombatant):Boolean = isDefinedAt(source.unifiedId, target.unifiedId)
 
   def generate(source: UnifiedCombatant, target: UnifiedCombatant): Duration
 
@@ -52,13 +55,13 @@ object DurationComboEntry {
 }
 
 class StaticDurationComboEntry(text: String, duration: Duration) extends DurationComboEntry(text) {
-  def isDefinedAt(source: UnifiedCombatant, target: UnifiedCombatant): Boolean = true
+  def isDefinedAt(source: UnifiedCombatantID, target: UnifiedCombatantID): Boolean = true
 
   def generate(source: UnifiedCombatant, target: UnifiedCombatant): Duration = duration
 }
 
 class BoundDurationComboEntry(text: String, limit: Duration.Limit.Value, ofSource: Boolean) extends DurationComboEntry(text) {
-  def isDefinedAt(source: UnifiedCombatant, target: UnifiedCombatant): Boolean = if (ofSource) source.isInOrder else target.isInOrder
+  def isDefinedAt(source: UnifiedCombatantID, target: UnifiedCombatantID): Boolean = if (ofSource) source.isInOrder else target.isInOrder
 
   def generate(source: UnifiedCombatant, target: UnifiedCombatant): Duration =
     Duration.RoundBound(if (ofSource) source.orderId else target.orderId, limit)
