@@ -18,13 +18,13 @@ package vcc.dnd4e.view
 
 import vcc.util.swing.{AutoCompleteDictionary, AutoCompleteTextComponent, MigPanel}
 import scala.swing._
-import vcc.dnd4e.view.DamageEffectEditor.Mark
-import scala.swing.event.ValueChanged
+import vcc.dnd4e.view.DamageEffectEditor.{Mark, Memento}
+import scala.swing.event.{SelectionChanged, ValueChanged, ButtonClicked}
 import org.slf4j.LoggerFactory
-import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
-import scala.swing.event.ButtonClicked
+import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
 import scala.Some
-import vcc.dnd4e.view.DamageEffectEditor.Memento
+import vcc.dnd4e.view.helper.DamageParser
+import vcc.dnd4e.tracker.common.UnifiedCombatantID
 
 object DamageEffectEditor {
 
@@ -37,34 +37,65 @@ object DamageEffectEditor {
   case class Memento(name: Option[String], damage: Option[String], condition: Option[String],
                      mark: Mark.Value = Mark.None,
                      duration: DurationComboEntry = DurationComboEntry.durations.head) {
-    def asListText = s"""<html><body style="font-weight: normal"><strong>${name.getOrElse("-")}</strong><br/>&nbsp;$formattedDamage${condition.getOrElse("")}<br>&nbsp;${duration.toString}</body></html>"""
+    def asListText = s"""<html><body style="font-weight: normal"><strong>${name.getOrElse("-")}</strong><br/>&nbsp;$formattedEffect<br>&nbsp;$formattedDuration</body></html>"""
 
-    private def formattedDamage = if(damage.isDefined) damage.get + "; " else ""
+    private def formattedEffect = {
+      val parts: List[Option[String]] = List(damage, condition, if (mark != Mark.None) Some(mark.toString) else None)
+      parts.flatMap(x => x).mkString("; ")
+    }
+
+    private def formattedDuration = if (condition.isDefined || mark != Mark.None) duration.toString else ""
   }
+
 }
 
-class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][]unrel[][]")
-  with GroupFormPanel.Presenter[Memento] {
+class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][]unrel[][]15[]")
+with ContextObserver
+with GroupFormPanel.Presenter[Memento] {
 
-  private val diceRE = """^\d+d\d+\+\d+$""".r
   private val nameField = new TextField()
   private val damageField = new TextField()
   private val conditionField = new TextField() with AutoCompleteTextComponent
   private val markCheckbox = new CheckBox("Mark")
   private val permanentMarkCheckbox = new CheckBox("Can't be Superseded")
   private val durationCombo = new ComboBox[DurationComboEntry](DurationComboEntry.durations)
+  private val applyButton = new Button(Action("Apply") {
+    doApply()
+  })
+
+  private var targetID: Option[UnifiedCombatantID] = None
+  private var sourceID: Option[UnifiedCombatantID] = None
 
   init()
 
-  listenTo(damageField, markCheckbox, conditionField)
+  listenTo(damageField, markCheckbox, conditionField, durationCombo.selection)
   reactions += {
     case ValueChanged(this.damageField) =>
+      toggleApply()
       publish(FormValueChanged(this, isValid))
     case ButtonClicked(this.markCheckbox) =>
       adjustMarkCheckboxes()
+      toggleApply()
       toggleDurationCombo()
     case ValueChanged(this.conditionField) =>
+      toggleApply()
       toggleDurationCombo()
+    case SelectionChanged(_) =>
+      applyButton.enabled = isDurationIsApplicable
+  }
+
+  private def toggleApply() {
+    applyButton.enabled = targetID.isDefined && isValid &&
+      (!isWhiteSpace(damageField.text) ||
+        !isWhiteSpace(conditionField.text) ||
+        markValue != Mark.None)
+  }
+
+  private def isDurationIsApplicable: Boolean = {
+    if (targetID.isDefined && sourceID.isDefined) {
+      durationCombo.selection.item.isDefinedAt(sourceID.get, targetID.get)
+    } else
+      false
   }
 
   private def createLabel(labelText: String): Label = {
@@ -72,6 +103,7 @@ class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]
     label.xAlignment = Alignment.Leading
     label
   }
+
   private def init() {
     nameField.name = "dee.name"
     add(createLabel("Name:"), "wrap")
@@ -97,6 +129,10 @@ class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]
     durationCombo.name = "dee.duration"
     durationCombo.enabled = false
     add(durationCombo, "gap unrel, wrap")
+
+    applyButton.name = "dee.apply"
+    applyButton.enabled = false
+    add(applyButton)
   }
 
   def setEntry(entry: Memento) {
@@ -107,6 +143,8 @@ class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]
     permanentMarkCheckbox.selected = entry.mark == Mark.Permanent
     durationCombo.selection.item = entry.duration
     adjustMarkCheckboxes()
+    toggleApply()
+    toggleDurationCombo()
   }
 
   def getEntry: Memento = {
@@ -125,13 +163,30 @@ class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]
     nameField.text = ""
     markCheckbox.selected = false
     adjustMarkCheckboxes()
+    toggleApply()
+    toggleDurationCombo()
   }
 
   def isValid: Boolean = {
-    diceRE.pattern.matcher(damageField.text).matches() || isWhiteSpace(damageField.text)
+    if (!isWhiteSpace(damageField.text))
+      DamageParser.parseDamageExpression(damageField.text).isRight
+    else
+      true
   }
 
-  private def fieldAsOption(field: TextField):Option[String] = if(isWhiteSpace(field.text)) None else Some(field.text)
+  override def changeTargetContext(newContext: Option[UnifiedCombatantID]) {
+    targetID = newContext
+  }
+
+  override def changeSourceContext(newContext: Option[UnifiedCombatantID]) {
+    sourceID = newContext
+  }
+
+  private def fieldAsOption(field: TextField): Option[String] = if (isWhiteSpace(field.text)) None else Some(field.text)
+
+  private def doApply() {
+    publish(FormSave(this))
+  }
 
   private def adjustMarkCheckboxes() {
     if (markCheckbox.selected) {
@@ -147,10 +202,8 @@ class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]
   }
 
   private def markValue: DamageEffectEditor.Mark.Value = {
-    import DamageEffectEditor.Mark
-
-    if(permanentMarkCheckbox.selected) Mark.Permanent
-    else if(markCheckbox.selected) Mark.Regular
+    if (permanentMarkCheckbox.selected) Mark.Permanent
+    else if (markCheckbox.selected) Mark.Regular
     else Mark.None
   }
 
