@@ -84,26 +84,6 @@ with GroupFormPanel.Presenter[Memento] {
       applyButton.enabled = isDurationIsApplicable
   }
 
-  private def toggleApply() {
-    applyButton.enabled = targetID.isDefined && isValid &&
-      (!isWhiteSpace(damageField.text) ||
-        !isWhiteSpace(conditionField.text) ||
-        markValue != Mark.None)
-  }
-
-  private def isDurationIsApplicable: Boolean = {
-    if (targetID.isDefined && sourceID.isDefined) {
-      durationCombo.selection.item.isDefinedAt(sourceID.get, targetID.get)
-    } else
-      false
-  }
-
-  private def createLabel(labelText: String): Label = {
-    val label = new Label(labelText)
-    label.xAlignment = Alignment.Leading
-    label
-  }
-
   private def init() {
     nameField.name = "dee.name"
     add(createLabel("Name:"), "wrap")
@@ -176,10 +156,37 @@ with GroupFormPanel.Presenter[Memento] {
 
   override def changeTargetContext(newContext: Option[UnifiedCombatantID]) {
     targetID = newContext
+    toggleApply()
   }
 
   override def changeSourceContext(newContext: Option[UnifiedCombatantID]) {
     sourceID = newContext
+    toggleApply()
+  }
+
+  private def toggleApply() {
+    applyButton.enabled =
+      targetID.isDefined &&
+        isDamageApplicable ||
+        (hasEffectDefined && isDurationIsApplicable)
+  }
+
+  private def isDamageApplicable: Boolean = isValid && !isWhiteSpace(damageField.text)
+
+  private def hasEffectDefined: Boolean =
+    !isWhiteSpace(conditionField.text) || markValue != Mark.None
+
+  private def isDurationIsApplicable: Boolean =
+    if (targetID.isDefined && sourceID.isDefined) {
+      durationCombo.selection.item.isDefinedAt(sourceID.get, targetID.get)
+    } else {
+      false
+    }
+
+  private def createLabel(labelText: String): Label = {
+    val label = new Label(labelText)
+    label.xAlignment = Alignment.Leading
+    label
   }
 
   private def fieldAsOption(field: TextField): Option[String] = if (isWhiteSpace(field.text)) None else Some(field.text)

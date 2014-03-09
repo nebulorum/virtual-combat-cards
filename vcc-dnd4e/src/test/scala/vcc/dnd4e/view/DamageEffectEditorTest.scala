@@ -17,14 +17,25 @@
 package vcc.dnd4e.view
 
 import org.uispec4j.{Key, UISpecTestCase, Window, UISpecAdapter}
-import scala.swing.{Reactor, Frame}
+import scala.swing.{Component, Reactor, Frame}
 import org.uispec4j.assertion.Assertion
 import vcc.dnd4e.view.DamageEffectEditor.{Mark, Memento}
-import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
+import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
 import scala.swing.event.Event
 import scala.util.Random
+import vcc.dnd4e.tracker.common.{InitiativeOrderID, CombatantID, UnifiedCombatantID}
 
 class DamageEffectEditorTest extends UISpecTestCase {
+
+
+  private val combA: CombatantID = CombatantID("A")
+  private val combB: CombatantID = CombatantID("B")
+  private val ioiA: InitiativeOrderID = InitiativeOrderID(combA, 0)
+  private val ioiB: InitiativeOrderID = InitiativeOrderID(combB, 0)
+  private val ucAO = UnifiedCombatantID(ioiA)
+  private val ucBO = UnifiedCombatantID(ioiB)
+  private val ucB = UnifiedCombatantID(combB)
+
   var view: DamageEffectEditor = null
 
   override def setUp() {
@@ -47,8 +58,9 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   def testSettingDamage_shouldSetDamageMemento() {
-    getDamageField.setText("1d12+2")
-    assertThat(mustBeEqual(Memento(None, Some("1d12+2"), None), view.getEntry))
+    getDamageField.setText("1d12 + 2")
+    assertThat(mustBeEqual(true, view.isValid))
+    assertThat(mustBeEqual(Memento(None, Some("1d12 + 2"), None), view.getEntry))
   }
 
   def testSettingDamageToBlank_shouldBeValidAndSetDamageMemento() {
@@ -60,6 +72,45 @@ class DamageEffectEditorTest extends UISpecTestCase {
   def testSettingName_shouldChangeMemento() {
     getNameField.setText("Power name")
     assertThat(mustBeEqual(Memento(Some("Power name"), None, None), view.getEntry))
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
+  def testAfterClear_shouldNotHaveApplyEnabled() {
+    view.clear()
+    assertThat(not(getApplyButton.isEnabled))
+    assertThat(not(getDurationCombo.isEnabled))
+  }
+
+  def testAfterClearingFilledForm_shouldResetApplyAndDurationControls() {
+    view.changeTargetContext(Some(ucBO))
+    view.setEntry(Memento(Some("Name"), Some("1d4"), Some("Condition"), Mark.Regular, DurationComboEntry.durations(3)))
+    assertThat(getApplyButton.isEnabled)
+    assertThat(getDurationCombo.isEnabled)
+
+    view.clear()
+    assertThat(not(getApplyButton.isEnabled))
+    assertThat(not(getDurationCombo.isEnabled))
+  }
+
+  def testAfterSettingEmptyMementoOnFilledForm_shouldResetApplyAndDurationControls() {
+    view.changeTargetContext(Some(ucBO))
+    view.setEntry(Memento(Some("Name"), Some("1d4"), Some("Condition"), Mark.Regular, DurationComboEntry.durations(3)))
+    assertThat(getApplyButton.isEnabled)
+    assertThat(getDurationCombo.isEnabled)
+
+    view.setEntry(Memento(None, None, None))
+    assertThat(not(getApplyButton.isEnabled))
+    assertThat(not(getDurationCombo.isEnabled))
+  }
+
+  def testAfterSettingOnlyName_shouldNotHaveApplyEnabled() {
+    view.changeTargetContext(Some(ucAO))
+    view.setEntry(Memento(None, Some("1"), None))
+    assertThat(getApplyButton.isEnabled)
+    assertThat(not(getDurationCombo.isEnabled))
+    view.setEntry(Memento(Some("a name"), None, None))
+    assertThat(not(getApplyButton.isEnabled))
+    assertThat(not(getDurationCombo.isEnabled))
   }
 
   def testSettingMemento_shouldUpdateField() {
@@ -70,11 +121,13 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   def testSettingEmptyMemento_shouldUpdateField() {
+    view.changeTargetContext(Some(ucB))
     view.setEntry(Memento(None, None, None))
     assertThat(getNameField.textEquals(""))
     assertThat(getConditionField.textEquals(""))
     assertThat(getDamageField.textEquals(""))
     assertThat(not(getDurationCombo.isEnabled))
+    assertThat(not(getApplyButton.isEnabled))
   }
 
   def testAfterSettingCondition_shouldEnableDuration() {
@@ -109,28 +162,30 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   def testSettingDamageToBadInput_shouldPublishEvent() {
-    val probe = createEventProbe()
+    val probe = createFormValueChangedEventProbe()
     probe.listenTo(view)
     getDamageField.setText("xx")
     assertThat(mustBeEqual(Some(false), probe.getLastValue))
   }
 
   def testSettingDamageToGoodInput_shouldPublishEvent() {
-    val probe = createEventProbe()
+    val probe = createFormValueChangedEventProbe()
     probe.listenTo(view)
-    getDamageField.setText("1d14+5")
+    getDamageField.setText("1d14 + 5")
     assertThat(mustBeEqual(Some(true), probe.getLastValue))
     assertThat(mustBeEqual(true, view.isValid))
   }
 
   def testSettingMementoThenClearing_shouldLeaveBlank() {
-    view.setEntry(Memento(Some("Name"), Some("2d4+2"), Some("dead"),Mark.Permanent))
+    view.setEntry(Memento(Some("Name"), Some("2d4+2"), Some("dead"), Mark.Permanent))
+    assertThat(mustBeEqual(true, view.isValid))
     view.clear()
     assertThat(getNameField.textIsEmpty())
     assertThat(getDamageField.textIsEmpty())
     assertThat(getConditionField.textIsEmpty())
     assertThat(not(getMarkCheckbox.isSelected))
     assertThat(not(getPermanentMarkCheckbox.isSelected))
+    assertThat(not(getApplyButton.isEnabled))
   }
 
   def testCondition_shouldHaveAutoComplete() {
@@ -225,11 +280,140 @@ class DamageEffectEditorTest extends UISpecTestCase {
     assertThat(getDurationCombo.selectionEquals(option.toString))
   }
 
+  def testChangingCheckedField_shouldTriggerValidationPresenterCheck() {
+    val damageText = "1d10 + 1"
+    view.changeTargetContext(Some(ucAO))
+    getDamageField.setText(damageText)
+
+    assertThat(mustBeEqual(true, view.isValid))
+    assertThat(getApplyButton.isEnabled)
+  }
+
+  def testWhenDamageIsValidButNoTarget_shouldNotAllowApply() {
+    view.changeSourceContext(None)
+    view.changeTargetContext(None)
+    getDamageField.setText("2d4 + 1d6 - 2")
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
+  def testWhenDamageIsInvalid_shouldNotAllowApply() {
+    view.changeSourceContext(None)
+    view.changeTargetContext(Some(ucB))
+    getDamageField.setText("x + 2")
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
+  def testClickApply_shouldTriggerApplyAndSave() {
+    val probe = createSaveEventProbe()
+    view.changeTargetContext(Some(ucB))
+    getDamageField.setText("1d8 + 2")
+    assertThat(getApplyButton.isEnabled)
+    getApplyButton.click()
+    assertThat(mustBeEqual(Some(view), probe.getLastValue))
+  }
+
+  def testWithTargetNotInOrderAndCondition_shouldApplyToValidDuration() {
+    assertAllDurationsValid(ucB, ucAO)
+  }
+
+  def testWithTargetInOrderSourceNotInOrderAndCondition_shouldApplyToValidDuration() {
+    assertAllDurationsValid(ucAO, ucB)
+  }
+
+  def testWithTargetInOrderSourceInOrderAndCondition_shouldApplyToValidDuration() {
+    assertAllDurationsValid(ucAO, ucBO)
+  }
+
+  def testWithTargetNotInOrderSourceNotInOrderAndCondition_shouldApplyToValidDuration() {
+    assertAllDurationsValid(ucB, ucB)
+  }
+
+  def testSetAndClearOnlyDamage_shouldDisableApply() {
+    view.changeTargetContext(Some(ucB))
+    getDamageField.setText("1d8 * 2")
+    assertThat(getApplyButton.isEnabled)
+    getDamageField.setText("")
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
+  def testSettingCondition_shouldEnableApply() {
+    view.changeTargetContext(Some(ucB))
+    view.changeSourceContext(Some(ucAO))
+    getConditionField.setText("some condition")
+    assertThat(getApplyButton.isEnabled)
+    getDamageField.setText("")
+    assertThat(getApplyButton.isEnabled)
+    getConditionField.setText("")
+    assertThat(not(getApplyButton.isEnabled))
+    getMarkCheckbox.click()
+    assertThat(getApplyButton.isEnabled)
+  }
+
+  def testSettingConditionWithNoTarget_shouldNotEnableApply() {
+    view.changeTargetContext(None)
+    getConditionField.setText("some condition")
+    assertThat(not(getApplyButton.isEnabled))
+    getDamageField.setText("")
+    assertThat(not(getApplyButton.isEnabled))
+    getConditionField.setText("1d4 / 2")
+    assertThat(not(getApplyButton.isEnabled))
+    getMarkCheckbox.click()
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
+  def testTargetAndConditionWithBadDamage_shouldNotEnableApply() {
+    view.changeTargetContext(Some(ucAO))
+    getConditionField.setText("some condition")
+    getDamageField.setText("x")
+    getMarkCheckbox.click()
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
+  def testAfterGettingValidApplyChangingTargetToInvalid_shouldDisableApply() {
+    view.changeSourceContext(Some(ucAO))
+    view.changeTargetContext(Some(ucBO))
+    getConditionField.setText("slowed")
+    getDurationCombo.select(DurationComboEntry.durations(DurationComboEntry.durations.length - 1).toString)
+    assertThat("apply button is armed", getApplyButton.isEnabled)
+    view.changeTargetContext(Some(ucB))
+    assertThat("apply button show not be armed", not(getApplyButton.isEnabled))
+  }
+
+  def testAfterGettingValidApplyChangingSourceToInvalid_shouldDisableApply() {
+    view.changeSourceContext(Some(ucBO))
+    view.changeTargetContext(Some(ucAO))
+    getConditionField.setText("slowed")
+    getDurationCombo.select(DurationComboEntry.durations.head.toString)
+    assertThat("apply button is armed", getApplyButton.isEnabled)
+    view.changeSourceContext(Some(ucB))
+    assertThat("apply button show not be armed", not(getApplyButton.isEnabled))
+  }
+
+  private def assertAllDurationsValid(target: UnifiedCombatantID, source: UnifiedCombatantID) {
+    view.changeSourceContext(Some(source))
+    view.changeTargetContext(Some(target))
+    for (duration <- DurationComboEntry.durations) {
+      getDurationCombo.select(duration.toString)
+      if (duration.isDefinedAt(source, target))
+        assertThat("should be enabled for " + duration.toString, getApplyButton.isEnabled)
+      else
+        assertThat("should not be enabled for " + duration.toString, not(getApplyButton.isEnabled))
+    }
+  }
+
   private def pickEntry[T](list: Seq[T]) = list(Random.nextInt(list.size))
 
-  private def createEventProbe(): ReactorProbe[Boolean] = {
+  private def createFormValueChangedEventProbe(): ReactorProbe[Boolean] = {
     val probe = new ReactorProbe[Boolean]({
       case FormValueChanged(_, value) => value
+    })
+    probe.listenTo(view)
+    probe
+  }
+
+  private def createSaveEventProbe(): ReactorProbe[Component] = {
+    val probe = new ReactorProbe[Component]({
+      case FormSave(form) => form
     })
     probe.listenTo(view)
     probe
@@ -246,6 +430,8 @@ class DamageEffectEditorTest extends UISpecTestCase {
   private def getPermanentMarkCheckbox = getMainWindow.getCheckBox("dee.permanentMark")
 
   private def getDurationCombo = getMainWindow.getComboBox("dee.duration")
+
+  private def getApplyButton = getMainWindow.getButton("dee.apply")
 
   private def mustBeEqual[T](expected: T, value: T) = new Assertion {
     def check() {
