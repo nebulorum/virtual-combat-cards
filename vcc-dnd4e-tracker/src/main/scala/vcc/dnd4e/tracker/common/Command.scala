@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -145,4 +145,10 @@ object Command {
     def createCommandStream() = singleCommand(RevertDeathCommand(who))
   }
 
+  case class CompoundAction(actions: Seq[CombatStateAction]) extends CombatStateAction("Apply all of: " + actions.map(_.description).mkString("; ")) {
+    def createCommandStream(): CommandStream[CombatState] = {
+      val streams = actions.map(_.createCommandStream())
+      streams.tail.foldLeft(streams.head)(_ followedBy _)
+    }
+  }
 }

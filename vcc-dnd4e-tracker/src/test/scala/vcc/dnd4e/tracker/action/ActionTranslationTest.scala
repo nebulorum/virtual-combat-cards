@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ import vcc.dnd4e.tracker.command._
 import vcc.dnd4e.tracker.command.AutomationCommandSource._
 import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.tracker.common.Effect.Condition
-import vcc.tracker.{Action, Command, SeqCommandStream}
+import vcc.tracker.{CommandStream, Action, Command, SeqCommandStream}
 
 class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData {
   private val eid = EffectID(combA, 0)
@@ -80,7 +80,23 @@ class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData 
     "  DelayAction and autostart" ! actionWithAutoStart(ExecuteInitiativeAction(ioA0, InitiativeAction.DelayAction), DelayCommand(ioA0)) ^
     "  ReadyAction and autostart" ! actionWithAutoStart(ExecuteInitiativeAction(ioA0, InitiativeAction.ReadyAction), ReadyActionCommand(ioA0), EndRoundCommand(ioA0)) ^
     endp ^
+    "  Compound actions " ^ compoundActions ^
     end
+
+  private def compoundActions = {
+    val dmgAction = ApplyDamage(combA, 12)
+    val dmgCmds = Seq(AddDamageIndicationCommand(combA, 12), ApplyDamageCommand)
+    val effAction = AddEffect(combA, combB, someCondition, someDuration)
+    val effCmds = Seq(AddEffectCommand(combA, combB, someCondition, someDuration))
+
+    "single compound action" !
+      verifyActionProducesAllCases(CompoundAction(Seq(dmgAction)), dmgCmds) ^
+      "damage and effect action" !
+        verifyActionProducesAllCases(CompoundAction(Seq(dmgAction, effAction)), dmgCmds ++ effCmds) ^
+      "damage, effect and damage action" !
+        verifyActionProducesAllCases(CompoundAction(Seq(dmgAction, effAction, dmgAction)), dmgCmds ++ effCmds ++ dmgCmds) ^
+      end
+  }
 
   private def actionWithAutoStart(action: Action[CombatState], commands: Command[CombatState]*) = {
     action.createCommandStream() must_== (SeqCommandStream(commands) followedBy startNextCommandStream)
@@ -96,5 +112,16 @@ class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData 
 
   private def directTranslation(action: Action[CombatState], commands: Command[CombatState]*) = {
     action.createCommandStream() must_== SeqCommandStream(commands)
+  }
+
+  private def verifyActionProducesAllCases(action: Action[CombatState], commands: Seq[Command[CombatState]]) = {
+
+    def drainStream(cs: CommandStream[CombatState]): List[Command[CombatState]] = {
+      cs.get(CombatState.empty) match {
+        case Some((c, next)) => c :: drainStream(next)
+        case None => Nil
+      }
+    }
+    drainStream(action.createCommandStream()).toSeq must_== commands
   }
 }
