@@ -32,9 +32,7 @@ abstract class DurationComboEntry(text: String) {
 
   def isDefinedAt(source: UnifiedCombatantID, target: UnifiedCombatantID) : Boolean
 
-  def isDefinedAt(source: UnifiedCombatant, target: UnifiedCombatant):Boolean = isDefinedAt(source.unifiedId, target.unifiedId)
-
-  def generate(source: UnifiedCombatant, target: UnifiedCombatant): Duration
+  def generate(source: UnifiedCombatantID, target: UnifiedCombatantID): Duration
 
   override def toString: String = text
 }
@@ -57,13 +55,13 @@ object DurationComboEntry {
 class StaticDurationComboEntry(text: String, duration: Duration) extends DurationComboEntry(text) {
   def isDefinedAt(source: UnifiedCombatantID, target: UnifiedCombatantID): Boolean = true
 
-  def generate(source: UnifiedCombatant, target: UnifiedCombatant): Duration = duration
+  def generate(source: UnifiedCombatantID, target: UnifiedCombatantID): Duration = duration
 }
 
 class BoundDurationComboEntry(text: String, limit: Duration.Limit.Value, ofSource: Boolean) extends DurationComboEntry(text) {
   def isDefinedAt(source: UnifiedCombatantID, target: UnifiedCombatantID): Boolean = if (ofSource) source.isInOrder else target.isInOrder
 
-  def generate(source: UnifiedCombatant, target: UnifiedCombatant): Duration =
+  def generate(source: UnifiedCombatantID, target: UnifiedCombatantID): Duration =
     Duration.RoundBound(if (ofSource) source.orderId else target.orderId, limit)
 }
 
@@ -205,8 +203,8 @@ class EffectEditor(parent: EffectEditorPanel) extends MigPanel("fillx, gap 2 2, 
 
     new UnifiedCombatantActionTransfer(
     condition.description, {
-      case tgt if durationBuilder.isDefinedAt(src, tgt) =>
-        parent.createEffect(tgt, condition, durationBuilder.generate(src, tgt), beneficial)
+      case tgt if durationBuilder.isDefinedAt(src.unifiedId, tgt.unifiedId) =>
+        parent.createEffect(tgt, condition, durationBuilder.generate(src.unifiedId, tgt.unifiedId), beneficial)
     }).toTransferable
   }))
 
@@ -224,7 +222,7 @@ class EffectEditor(parent: EffectEditorPanel) extends MigPanel("fillx, gap 2 2, 
       parent.createEffect(
         parent.getTargetCombatant,
         typeCombo.selection.item.generateCondition(),
-        durationCombo.selection.item.generate(source.get, parent.getTargetCombatant),
+        durationCombo.selection.item.generate(source.get.unifiedId, parent.getTargetCombatant.unifiedId),
         benefCheckbox.selected)
     case event.ButtonClicked(this.clearButton) =>
       clearPanel()
@@ -273,7 +271,7 @@ class EffectEditor(parent: EffectEditorPanel) extends MigPanel("fillx, gap 2 2, 
 
   private def checkAddButton() {
     if (source.isDefined && target.isDefined)
-      addButton.enabled = durationCombo.selection.item.isDefinedAt(source.get, target.get)
+      addButton.enabled = durationCombo.selection.item.isDefinedAt(source.get.unifiedId, target.get.unifiedId)
     else
       addButton.enabled = false
   }

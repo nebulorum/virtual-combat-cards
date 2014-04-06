@@ -16,41 +16,19 @@
  */
 package vcc.dnd4e.view
 
-import org.uispec4j.{Key, UISpecTestCase, Window, UISpecAdapter}
-import scala.swing.{Component, Reactor, Frame}
+import org.uispec4j.Key
+import scala.swing.{Component, Reactor}
 import org.uispec4j.assertion.Assertion
-import vcc.dnd4e.view.DamageEffectEditor.{Mark, Memento}
-import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
+import vcc.dnd4e.view.DamageEffectEditor.Mark
 import scala.swing.event.Event
 import scala.util.Random
-import vcc.dnd4e.tracker.common.{InitiativeOrderID, CombatantID, UnifiedCombatantID}
+import vcc.dnd4e.tracker.common._
+import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
+import vcc.dnd4e.view.GroupFormPanel.FormSave
+import scala.Some
+import vcc.dnd4e.view.DamageEffectEditor.Memento
 
-class DamageEffectEditorTest extends UISpecTestCase {
-
-
-  private val combA: CombatantID = CombatantID("A")
-  private val combB: CombatantID = CombatantID("B")
-  private val ioiA: InitiativeOrderID = InitiativeOrderID(combA, 0)
-  private val ioiB: InitiativeOrderID = InitiativeOrderID(combB, 0)
-  private val ucAO = UnifiedCombatantID(ioiA)
-  private val ucBO = UnifiedCombatantID(ioiB)
-  private val ucB = UnifiedCombatantID(combB)
-
-  var view: DamageEffectEditor = null
-
-  override def setUp() {
-    super.setUp()
-    val panel = new DamageEffectEditor
-    view = panel
-    setAdapter(new UISpecAdapter() {
-      def getMainWindow: Window = {
-        val frame = new Frame {
-          contents = panel
-        }
-        new Window(frame.peer)
-      }
-    })
-  }
+class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectEditorFieldSelector {
 
   def testSettingCondition_shouldSetConditionMemento() {
     getConditionField.setText("slowed")
@@ -239,7 +217,7 @@ class DamageEffectEditorTest extends UISpecTestCase {
     assertThat(mustBeEqual(Memento(None, None, None, Mark.Permanent), view.getEntry))
 
     getMarkCheckbox.click()
-    assertThat(mustBeEqual(Memento(None, None, None, Mark.None), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, None, Mark.NoMark), view.getEntry))
   }
 
   def testSetMementoMark_shouldUpdateMarkCheckbox() {
@@ -258,7 +236,7 @@ class DamageEffectEditorTest extends UISpecTestCase {
 
   def testSetMementoPermanentMarkAndBack_shouldUpdateMarkCheckbox() {
     view.setEntry(Memento(None, None, None, Mark.Permanent))
-    view.setEntry(Memento(None, None, None, Mark.None))
+    view.setEntry(Memento(None, None, None, Mark.NoMark))
     assertThat(not(getMarkCheckbox.isSelected))
     assertThat(not(getPermanentMarkCheckbox.isSelected))
     assertThat(not(getPermanentMarkCheckbox.isEnabled))
@@ -337,8 +315,7 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   def testSettingCondition_shouldEnableApply() {
-    view.changeTargetContext(Some(ucB))
-    view.changeSourceContext(Some(ucAO))
+    setSourceAndTarget(ucAO, ucB)
     getConditionField.setText("some condition")
     assertThat(getApplyButton.isEnabled)
     getDamageField.setText("")
@@ -370,8 +347,7 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   def testAfterGettingValidApplyChangingTargetToInvalid_shouldDisableApply() {
-    view.changeSourceContext(Some(ucAO))
-    view.changeTargetContext(Some(ucBO))
+    setSourceAndTarget(ucAO, ucBO)
     getConditionField.setText("slowed")
     getDurationCombo.select(DurationComboEntry.durations(DurationComboEntry.durations.length - 1).toString)
     assertThat("apply button is armed", getApplyButton.isEnabled)
@@ -380,8 +356,7 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   def testAfterGettingValidApplyChangingSourceToInvalid_shouldDisableApply() {
-    view.changeSourceContext(Some(ucBO))
-    view.changeTargetContext(Some(ucAO))
+    setSourceAndTarget(ucBO, ucAO)
     getConditionField.setText("slowed")
     getDurationCombo.select(DurationComboEntry.durations.head.toString)
     assertThat("apply button is armed", getApplyButton.isEnabled)
@@ -390,8 +365,7 @@ class DamageEffectEditorTest extends UISpecTestCase {
   }
 
   private def assertAllDurationsValid(target: UnifiedCombatantID, source: UnifiedCombatantID) {
-    view.changeSourceContext(Some(source))
-    view.changeTargetContext(Some(target))
+    setSourceAndTarget(source, target)
     for (duration <- DurationComboEntry.durations) {
       getDurationCombo.select(duration.toString)
       if (duration.isDefinedAt(source, target))
@@ -418,20 +392,6 @@ class DamageEffectEditorTest extends UISpecTestCase {
     probe.listenTo(view)
     probe
   }
-
-  private def getConditionField = getMainWindow.getTextBox("dee.condition")
-
-  private def getNameField = getMainWindow.getTextBox("dee.name")
-
-  private def getDamageField = getMainWindow.getTextBox("dee.damage")
-
-  private def getMarkCheckbox = getMainWindow.getCheckBox("dee.mark")
-
-  private def getPermanentMarkCheckbox = getMainWindow.getCheckBox("dee.permanentMark")
-
-  private def getDurationCombo = getMainWindow.getComboBox("dee.duration")
-
-  private def getApplyButton = getMainWindow.getButton("dee.apply")
 
   private def mustBeEqual[T](expected: T, value: T) = new Assertion {
     def check() {

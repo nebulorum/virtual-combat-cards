@@ -18,38 +18,51 @@ package vcc.dnd4e.view
 
 import vcc.util.swing.{AutoCompleteDictionary, AutoCompleteTextComponent, MigPanel}
 import scala.swing._
-import vcc.dnd4e.view.DamageEffectEditor.{Mark, Memento}
-import scala.swing.event.{SelectionChanged, ValueChanged, ButtonClicked}
+import vcc.dnd4e.view.DamageEffectEditor.Mark
+import scala.swing.event.ValueChanged
 import org.slf4j.LoggerFactory
-import vcc.dnd4e.view.GroupFormPanel.{FormSave, FormValueChanged}
-import scala.Some
 import vcc.dnd4e.view.helper.DamageParser
-import vcc.dnd4e.tracker.common.UnifiedCombatantID
+import vcc.dnd4e.tracker.common._
+import vcc.dnd4e.tracker.common.Command.CombatStateAction
+import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
+import vcc.dnd4e.tracker.common.Command.CompoundAction
+import scala.swing.event.ButtonClicked
+import vcc.dnd4e.tracker.common.Command.AddEffect
+import vcc.dnd4e.view.GroupFormPanel.FormSave
+import vcc.dnd4e.view.DamageEffectEditor.Memento
+import scala.swing.event.SelectionChanged
 
 object DamageEffectEditor {
 
   object Mark extends Enumeration {
-    val None = Value("No Mark")
+    val NoMark = Value("No Mark")
     val Regular = Value("Mark")
     val Permanent = Value("Permanent Mark")
+
+    def toCondition(mark: Mark.Value, marker: CombatantID): Option[Condition] =
+      mark match {
+        case NoMark => None
+        case Regular => Some(Effect.Condition.Mark(marker, permanent = false))
+        case Permanent => Some(Effect.Condition.Mark(marker, permanent = true))
+      }
   }
 
   case class Memento(name: Option[String], damage: Option[String], condition: Option[String],
-                     mark: Mark.Value = Mark.None,
+                     mark: Mark.Value = Mark.NoMark,
                      duration: DurationComboEntry = DurationComboEntry.durations.head) {
     def asListText = s"""<html><body style="font-weight: normal"><strong>${name.getOrElse("-")}</strong><br/>&nbsp;$formattedEffect<br>&nbsp;$formattedDuration</body></html>"""
 
     private def formattedEffect = {
-      val parts: List[Option[String]] = List(damage, condition, if (mark != Mark.None) Some(mark.toString) else None)
+      val parts: List[Option[String]] = List(damage, condition, if (mark != Mark.NoMark) Some(mark.toString) else None)
       parts.flatMap(x => x).mkString("; ")
     }
 
-    private def formattedDuration = if (condition.isDefined || mark != Mark.None) duration.toString else ""
+    private def formattedDuration = if (condition.isDefined || mark != Mark.NoMark) duration.toString else ""
   }
 
 }
 
-class DamageEffectEditor extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][]unrel[][]15[]")
+class DamageEffectEditor(panelDirector: PanelDirector) extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][]unrel[][]15[]")
 with ContextObserver
 with GroupFormPanel.Presenter[Memento] {
 
@@ -119,7 +132,7 @@ with GroupFormPanel.Presenter[Memento] {
     nameField.text = entry.name.getOrElse("")
     damageField.text = entry.damage.getOrElse("")
     conditionField.text = entry.condition.getOrElse("")
-    markCheckbox.selected = entry.mark != Mark.None
+    markCheckbox.selected = entry.mark != Mark.NoMark
     permanentMarkCheckbox.selected = entry.mark == Mark.Permanent
     durationCombo.selection.item = entry.duration
     adjustMarkCheckboxes()
@@ -174,7 +187,7 @@ with GroupFormPanel.Presenter[Memento] {
   private def isDamageApplicable: Boolean = isValid && !isWhiteSpace(damageField.text)
 
   private def hasEffectDefined: Boolean =
-    !isWhiteSpace(conditionField.text) || markValue != Mark.None
+    !isWhiteSpace(conditionField.text) || markValue != Mark.NoMark
 
   private def isDurationIsApplicable: Boolean =
     if (targetID.isDefined && sourceID.isDefined) {
@@ -193,6 +206,19 @@ with GroupFormPanel.Presenter[Memento] {
 
   private def doApply() {
     publish(FormSave(this))
+    if (sourceID.isDefined && targetID.isDefined) {
+      val condition = fieldAsOption(conditionField).map(Effect.Condition.Generic(_, beneficial = false))
+      val source = sourceID.get
+      val target = targetID.get
+      val duration = durationCombo.selection.item.generate(source, target)
+
+      val actions: List[CombatStateAction] = List(
+        condition.map(AddEffect(target.combId, source.combId, _, duration)),
+        Mark.toCondition(markValue, source.combId).map(AddEffect(target.combId, source.combId, _, duration))
+      ).flatMap(x => x)
+
+      panelDirector.requestAction(CompoundAction(actions))
+    }
   }
 
   private def adjustMarkCheckboxes() {
@@ -211,7 +237,7 @@ with GroupFormPanel.Presenter[Memento] {
   private def markValue: DamageEffectEditor.Mark.Value = {
     if (permanentMarkCheckbox.selected) Mark.Permanent
     else if (markCheckbox.selected) Mark.Regular
-    else Mark.None
+    else Mark.NoMark
   }
 
   private def loadAutoCompleteDictionary(): AutoCompleteDictionary = {
