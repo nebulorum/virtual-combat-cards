@@ -19,37 +19,36 @@ package vcc.dnd4e.view
 import org.uispec4j.Key
 import scala.swing.{Component, Reactor}
 import org.uispec4j.assertion.Assertion
-import vcc.dnd4e.view.DamageEffectEditor.Mark
+import vcc.dnd4e.view.DamageEffectEditor.{EffectMemento, Mark, Memento}
 import scala.swing.event.Event
 import scala.util.Random
 import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
 import vcc.dnd4e.view.GroupFormPanel.FormSave
 import scala.Some
-import vcc.dnd4e.view.DamageEffectEditor.Memento
 
 class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectEditorFieldSelector {
 
   def testSettingCondition_shouldSetConditionMemento() {
     getConditionField.setText("slowed")
-    assertThat(mustBeEqual(Memento(None, None, Some("slowed")), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, effect = Some(EffectMemento(Some("slowed")))), view.getEntry))
   }
 
   def testSettingDamage_shouldSetDamageMemento() {
     getDamageField.setText("1d12 + 2")
     assertThat(mustBeEqual(true, view.isValid))
-    assertThat(mustBeEqual(Memento(None, Some("1d12 + 2"), None), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, Some("1d12 + 2"), effect = None), view.getEntry))
   }
 
   def testSettingDamageToBlank_shouldBeValidAndSetDamageMemento() {
     getDamageField.setText(" \t ")
     assertThat(mustBeEqual(true, view.isValid))
-    assertThat(mustBeEqual(Memento(None, None, None), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, effect = None), view.getEntry))
   }
 
   def testSettingName_shouldChangeMemento() {
     getNameField.setText("Power name")
-    assertThat(mustBeEqual(Memento(Some("Power name"), None, None), view.getEntry))
+    assertThat(mustBeEqual(Memento(Some("Power name"), None, effect = None), view.getEntry))
     assertThat(not(getApplyButton.isEnabled))
   }
 
@@ -61,7 +60,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testAfterClearingFilledForm_shouldResetApplyAndDurationControls() {
     view.changeTargetContext(Some(ucBO))
-    view.setEntry(Memento(Some("Name"), Some("1d4"), Some("Condition"), Mark.Regular, DurationComboEntry.durations(3)))
+    view.setEntry(Memento(Some("Name"), Some("1d4"), Some(EffectMemento(Some("Condition"), Mark.Regular, DurationComboEntry.durations(3)))))
     assertThat(getApplyButton.isEnabled)
     assertThat(getDurationCombo.isEnabled)
 
@@ -72,27 +71,27 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testAfterSettingEmptyMementoOnFilledForm_shouldResetApplyAndDurationControls() {
     view.changeTargetContext(Some(ucBO))
-    view.setEntry(Memento(Some("Name"), Some("1d4"), Some("Condition"), Mark.Regular, DurationComboEntry.durations(3)))
+    view.setEntry(Memento(Some("Name"), Some("1d4"), Some(EffectMemento(Some("Condition"), Mark.Regular, DurationComboEntry.durations(3)))))
     assertThat(getApplyButton.isEnabled)
     assertThat(getDurationCombo.isEnabled)
 
-    view.setEntry(Memento(None, None, None))
+    view.setEntry(Memento(None, None, effect = None))
     assertThat(not(getApplyButton.isEnabled))
     assertThat(not(getDurationCombo.isEnabled))
   }
 
   def testAfterSettingOnlyName_shouldNotHaveApplyEnabled() {
     view.changeTargetContext(Some(ucAO))
-    view.setEntry(Memento(None, Some("1"), None))
+    view.setEntry(Memento(None, Some("1"), effect = None))
     assertThat(getApplyButton.isEnabled)
     assertThat(not(getDurationCombo.isEnabled))
-    view.setEntry(Memento(Some("a name"), None, None))
+    view.setEntry(Memento(Some("a name"), None, effect = None))
     assertThat(not(getApplyButton.isEnabled))
     assertThat(not(getDurationCombo.isEnabled))
   }
 
   def testSettingMemento_shouldUpdateField() {
-    view.setEntry(Memento(Some("Power"), Some("1d10+1"), Some("immobilized")))
+    view.setEntry(Memento(Some("Power"), Some("1d10+1"), effect = Some(EffectMemento(Some("immobilized")))))
     assertThat(getNameField.textEquals("Power"))
     assertThat(getConditionField.textEquals("immobilized"))
     assertThat(getDamageField.textEquals("1d10+1"))
@@ -100,7 +99,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testSettingEmptyMemento_shouldUpdateField() {
     view.changeTargetContext(Some(ucB))
-    view.setEntry(Memento(None, None, None))
+    view.setEntry(Memento(None, None, effect = None))
     assertThat(getNameField.textEquals(""))
     assertThat(getConditionField.textEquals(""))
     assertThat(getDamageField.textEquals(""))
@@ -155,7 +154,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testSettingMementoThenClearing_shouldLeaveBlank() {
-    view.setEntry(Memento(Some("Name"), Some("2d4+2"), Some("dead"), Mark.Permanent))
+    view.setEntry(Memento(Some("Name"), Some("2d4+2"), effect = Some(EffectMemento(Some("dead"), mark = Mark.Permanent))))
     assertThat(mustBeEqual(true, view.isValid))
     view.clear()
     assertThat(getNameField.textIsEmpty())
@@ -211,32 +210,32 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testMarkSelection_shouldChangeMemento() {
     getMarkCheckbox.click()
-    assertThat(mustBeEqual(Memento(None, None, None, Mark.Regular), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, effect = Some(EffectMemento(None, Mark.Regular))), view.getEntry))
 
     getPermanentMarkCheckbox.click()
-    assertThat(mustBeEqual(Memento(None, None, None, Mark.Permanent), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, effect = Some(EffectMemento(None, Mark.Permanent))), view.getEntry))
 
     getMarkCheckbox.click()
-    assertThat(mustBeEqual(Memento(None, None, None, Mark.NoMark), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, effect = None), view.getEntry))
   }
 
   def testSetMementoMark_shouldUpdateMarkCheckbox() {
-    view.setEntry(Memento(None, None, None, Mark.Regular))
+    view.setEntry(Memento(None, None, effect = Some(EffectMemento(None, Mark.Regular))))
     assertThat(getMarkCheckbox.isSelected)
     assertThat(not(getPermanentMarkCheckbox.isSelected))
     assertThat(getPermanentMarkCheckbox.isEnabled)
   }
 
   def testSetMementoPermanentMark_shouldUpdateMarkCheckbox() {
-    view.setEntry(Memento(None, None, None, Mark.Permanent))
+    view.setEntry(Memento(None, None, effect = Some(EffectMemento(None, Mark.Permanent))))
     assertThat(getMarkCheckbox.isSelected)
     assertThat(getPermanentMarkCheckbox.isSelected)
     assertThat(getPermanentMarkCheckbox.isEnabled)
   }
 
   def testSetMementoPermanentMarkAndBack_shouldUpdateMarkCheckbox() {
-    view.setEntry(Memento(None, None, None, Mark.Permanent))
-    view.setEntry(Memento(None, None, None, Mark.NoMark))
+    view.setEntry(Memento(None, None, effect = Some(EffectMemento(None, Mark.Permanent))))
+    view.setEntry(Memento(None, None, effect = Some(EffectMemento(None, Mark.NoMark))))
     assertThat(not(getMarkCheckbox.isSelected))
     assertThat(not(getPermanentMarkCheckbox.isSelected))
     assertThat(not(getPermanentMarkCheckbox.isEnabled))
@@ -248,13 +247,14 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testDurationComboSelection_shouldUpdateMemento() {
     val option = pickEntry(DurationComboEntry.durations)
+    getMarkCheckbox.click()
     getDurationCombo.select(option.toString)
-    assertThat(mustBeEqual(Memento(None, None, None, duration = option), view.getEntry))
+    assertThat(mustBeEqual(Memento(None, None, Some(EffectMemento(None, Mark.Regular, option))), view.getEntry))
   }
 
   def testDurationComboSelection_shouldBeSetByMemento() {
     val option = pickEntry(DurationComboEntry.durations)
-    view.setEntry(Memento(None, None, None, duration = option))
+    view.setEntry(Memento(None, None, Some(EffectMemento(Some("cond"),duration = option))))
     assertThat(getDurationCombo.selectionEquals(option.toString))
   }
 

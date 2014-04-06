@@ -18,7 +18,7 @@ package vcc.dnd4e.view
 
 import vcc.util.swing.{AutoCompleteDictionary, AutoCompleteTextComponent, MigPanel}
 import scala.swing._
-import vcc.dnd4e.view.DamageEffectEditor.Mark
+import vcc.dnd4e.view.DamageEffectEditor.{EffectMemento, Mark, Memento}
 import scala.swing.event.ValueChanged
 import org.slf4j.LoggerFactory
 import vcc.dnd4e.view.helper.DamageParser
@@ -29,7 +29,6 @@ import vcc.dnd4e.tracker.common.Command.CompoundAction
 import scala.swing.event.ButtonClicked
 import vcc.dnd4e.tracker.common.Command.AddEffect
 import vcc.dnd4e.view.GroupFormPanel.FormSave
-import vcc.dnd4e.view.DamageEffectEditor.Memento
 import scala.swing.event.SelectionChanged
 
 object DamageEffectEditor {
@@ -45,19 +44,22 @@ object DamageEffectEditor {
         case Regular => Some(Effect.Condition.Mark(marker, permanent = false))
         case Permanent => Some(Effect.Condition.Mark(marker, permanent = true))
       }
+
+    def formatted(mark: Mark.Value): Option[String] =
+      if (mark != Mark.NoMark) Some(mark.toString) else None
   }
 
-  case class Memento(name: Option[String], damage: Option[String], condition: Option[String],
-                     mark: Mark.Value = Mark.NoMark,
-                     duration: DurationComboEntry = DurationComboEntry.durations.head) {
+  case class EffectMemento(condition: Option[String], mark: Mark.Value = Mark.NoMark, duration: DurationComboEntry = DurationComboEntry.durations.head) {
+    def formatted = List(condition, Mark.formatted(mark)).flatMap(x => x).mkString("; ")
+  }
+
+  case class Memento(name: Option[String], damage: Option[String],
+                     effect: Option[EffectMemento] = None) {
     def asListText = s"""<html><body style="font-weight: normal"><strong>${name.getOrElse("-")}</strong><br/>&nbsp;$formattedEffect<br>&nbsp;$formattedDuration</body></html>"""
 
-    private def formattedEffect = {
-      val parts: List[Option[String]] = List(damage, condition, if (mark != Mark.NoMark) Some(mark.toString) else None)
-      parts.flatMap(x => x).mkString("; ")
-    }
+    private def formattedEffect = List(damage, effect.map(_.formatted)).flatMap(x => x).mkString("; ")
 
-    private def formattedDuration = if (condition.isDefined || mark != Mark.NoMark) duration.toString else ""
+    private def formattedDuration = effect.map(_.duration.toString).getOrElse("")
   }
 
 }
@@ -131,10 +133,11 @@ with GroupFormPanel.Presenter[Memento] {
   def setEntry(entry: Memento) {
     nameField.text = entry.name.getOrElse("")
     damageField.text = entry.damage.getOrElse("")
-    conditionField.text = entry.condition.getOrElse("")
-    markCheckbox.selected = entry.mark != Mark.NoMark
-    permanentMarkCheckbox.selected = entry.mark == Mark.Permanent
-    durationCombo.selection.item = entry.duration
+    if (entry.effect.isDefined) {
+      setEffectFields(entry.effect.get)
+    } else {
+      clearEffectFields()
+    }
     adjustMarkCheckboxes()
     toggleApply()
     toggleDurationCombo()
@@ -144,9 +147,10 @@ with GroupFormPanel.Presenter[Memento] {
     Memento(
       fieldAsOption(nameField),
       fieldAsOption(damageField),
-      fieldAsOption(conditionField),
-      markValue,
-      durationCombo.selection.item
+      if (fieldAsOption(conditionField).isDefined || markValue != Mark.NoMark)
+        Some(EffectMemento(fieldAsOption(conditionField), mark = markValue, duration = durationCombo.selection.item))
+      else
+        None
     )
   }
 
@@ -182,6 +186,20 @@ with GroupFormPanel.Presenter[Memento] {
       targetID.isDefined &&
         isDamageApplicable ||
         (hasEffectDefined && isDurationIsApplicable)
+  }
+
+  private def setEffectFields(effect: EffectMemento) {
+    conditionField.text = effect.condition.getOrElse("")
+    markCheckbox.selected = effect.mark != Mark.NoMark
+    permanentMarkCheckbox.selected = effect.mark == Mark.Permanent
+    durationCombo.selection.item = effect.duration
+  }
+
+  private def clearEffectFields() {
+    conditionField.text = ""
+    markCheckbox.selected = false
+    permanentMarkCheckbox.selected = false
+    durationCombo.selection.item = DurationComboEntry.durations.head
   }
 
   private def isDamageApplicable: Boolean = isValid && !isWhiteSpace(damageField.text)

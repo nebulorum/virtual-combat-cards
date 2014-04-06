@@ -20,26 +20,26 @@ import org.uispec4j.UISpecTestCase
 import vcc.dnd4e.view.{DamageEffectEditorFieldSelector, DamageEffectEditorCommon}
 import vcc.dnd4e.tracker.common.{UnifiedCombatantID, Effect}
 import org.mockito.Mockito._
-import vcc.dnd4e.view.DamageEffectEditor.{Mark, Memento}
+import vcc.dnd4e.view.DamageEffectEditor.{EffectMemento, Mark, Memento}
 import org.mockito.Matchers
 import vcc.dnd4e.tracker.common.Command.{CombatStateAction, CompoundAction, AddEffect}
 
 class DamageEffectEditorApplyTest extends UISpecTestCase with DamageEffectEditorCommon with DamageEffectEditorFieldSelector {
 
   def testSingleConditionOnRoundBoundDuration() {
-    setMementoApplyAndVerify(ucAO, ucBO, Memento(None, None, Some("Stunned"), duration = pickDuration("End of source's next turn")))
+    setMementoApplyAndVerify(ucAO, ucBO, Memento(None, None, Some(EffectMemento(Some("Stunned"), duration = pickDuration("End of source's next turn")))))
   }
 
   def testSingleConditionOnStaticDuration() {
-    setMementoApplyAndVerify(ucAO, ucBO, Memento(None, None, Some("Slowed"), duration = pickDuration("Save End")))
+    setMementoApplyAndVerify(ucAO, ucBO, Memento(None, None, Some(EffectMemento( Some("Slowed"), duration = pickDuration("Save End")))))
   }
 
   def testConditionAndMarkOnStaticDuration() {
-    setMementoApplyAndVerify(ucAO, ucBO, Memento(None, None, Some("Dazed"), Mark.Permanent, pickDuration("Save End")))
+    setMementoApplyAndVerify(ucAO, ucBO, Memento(None, None, Some(EffectMemento( Some("Dazed"), Mark.Permanent, pickDuration("Save End")))))
   }
 
   def testOnlyMarkWithRoundBoundDuration() {
-    setMementoApplyAndVerify(ucBO, ucAO, Memento(None, None, None, Mark.Regular, pickDuration("Start of target's next turn")))
+    setMementoApplyAndVerify(ucBO, ucAO, Memento(None, None, Some(EffectMemento(None, Mark.Regular, pickDuration("Start of target's next turn")))))
   }
   
   def setMementoApplyAndVerify(source: UnifiedCombatantID, target: UnifiedCombatantID, memento: Memento) {
@@ -57,14 +57,14 @@ class DamageEffectEditorApplyTest extends UISpecTestCase with DamageEffectEditor
   }
 
   private def makeCondition(source: UnifiedCombatantID, target: UnifiedCombatantID, memento: Memento):Option[CombatStateAction] =
-    memento.condition.map(
+    memento.effect.flatMap(_.condition).map(
       condition =>
         AddEffect(
           target.combId, source.combId,
           Effect.Condition.Generic(condition, beneficial = false),
-          memento.duration.generate(source, target)))
+          memento.effect.get.duration.generate(source, target)))
 
   private def makeMark(source: UnifiedCombatantID, target: UnifiedCombatantID, memento: Memento):Option[CombatStateAction] =
-    Mark.toCondition(memento.mark, source.combId).
-      map(condition => AddEffect(target.combId, source.combId, condition, memento.duration.generate(source, target)))
+    memento.effect.flatMap(x => Mark.toCondition(x.mark, source.combId)).
+      map(condition => AddEffect(target.combId, source.combId, condition, memento.effect.get.duration.generate(source, target)))
 }
