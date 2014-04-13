@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2011 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,17 +18,10 @@ package vcc.dnd4e.application
 
 import org.specs2.SpecificationWithJUnit
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import vcc.infra.datastore.naming.EntityID
 import vcc.dnd4e.tracker.common._
-import vcc.tracker.Event
 import vcc.dnd4e.tracker.event._
 
-class CombatSaveFileTest extends SpecificationWithJUnit {
-  private val combA = CombatantID("A")
-  private val comb1 = CombatantID("1")
-  private val comb2 = CombatantID("2")
-  private val emptyState = CombatState.empty
-
+class CombatSaveFileTest extends SpecificationWithJUnit with CombatStateBuilder {
   def is = "CombatSaveFile".title ^
     baseCases ^
     healthCases ^
@@ -70,9 +63,6 @@ class CombatSaveFileTest extends SpecificationWithJUnit {
   }
 
   def initiativeOrder = {
-    def addToOrder(comb: CombatantID, bonus: Int, rolls: Int*) =
-      AddCombatantToOrderEvent(InitiativeDefinition(comb, bonus, rolls.toList))
-
     val order1A2 = buildState(stateWithCombatant(), addToOrder(combA, 3, 10), addToOrder(comb1, 5, 15), addToOrder(comb2, 6, 8))
 
     val cases = List(
@@ -91,17 +81,17 @@ class CombatSaveFileTest extends SpecificationWithJUnit {
     import vcc.dnd4e.tracker.common.Effect._
 
     def makeEventWithDuration(duration: Duration): AddEffectEvent = {
-      AddEffectEvent(comb1, combA, Condition.Mark(comb1, true), duration)
+      AddEffectEvent(comb1, combA, Condition.Mark(comb1, permanent = true), duration)
     }
 
     def makeRoundBoundDuration(limit: Duration.Limit.Value): Duration = {
       Duration.RoundBound(InitiativeOrderID(CombatantID(limit.id.toString), limit.id), limit)
     }
 
-    val event1 = AddEffectEvent(combA, comb1, Condition.Generic("effect", true), Duration.EndOfEncounter)
-    val event2 = AddEffectEvent(combA, comb2, Condition.Generic("bad effect", false), Duration.EndOfEncounter)
-    val event3 = AddEffectEvent(combA, comb2, Condition.Mark(comb2, false), Duration.EndOfEncounter)
-    val event4 = AddEffectEvent(comb1, combA, Condition.Mark(comb1, true), Duration.EndOfEncounter)
+    val event1 = AddEffectEvent(combA, comb1, Condition.Generic("effect", beneficial =  true), Duration.EndOfEncounter)
+    val event2 = AddEffectEvent(combA, comb2, Condition.Generic("bad effect", beneficial = false), Duration.EndOfEncounter)
+    val event3 = AddEffectEvent(combA, comb2, Condition.Mark(comb2, permanent = false), Duration.EndOfEncounter)
+    val event4 = AddEffectEvent(comb1, combA, Condition.Mark(comb1, permanent = true), Duration.EndOfEncounter)
     val event5 = makeEventWithDuration(Duration.Stance)
 
     val durations = Duration.allStaticDurations ++
@@ -112,7 +102,7 @@ class CombatSaveFileTest extends SpecificationWithJUnit {
 
     val cases = List(
       testCase("Generic beneficial", buildState(stateWithCombatant(), event1)),
-      testCase("both genereic events", buildState(stateWithCombatant(), event1, event2)),
+      testCase("both generic events", buildState(stateWithCombatant(), event1, event2)),
       testCase("mark", buildState(stateWithCombatant(), event3)),
       testCase("both mark types", buildState(stateWithCombatant(), event3, event4)),
       testCase("stance duration", buildState(stateWithCombatant(), event5))
@@ -129,35 +119,17 @@ class CombatSaveFileTest extends SpecificationWithJUnit {
     testDescription ! (loadedCombatState must_== combatState)
   }
 
-  private def buildState(baseState: CombatState, events: Event[CombatState]*): CombatState = {
-    baseState.transitionWith(events.toList)
-  }
-
   private def storeAndLoadToMemory(combatState: CombatState): CombatState = {
     loadFromByteArray(storeToByteArray(combatState))
   }
 
   private def stateWithCombatant(): CombatState = {
-    val entity1 = createCombatantEntity("Fighter", CharacterHealthDefinition(30), 5)
-    val entity2 = createCombatantEntity("Goblin", MonsterHealthDefinition(25), 3)
-    val entity3 = createCombatantEntity("Goblin-mini", MinionHealthDefinition, 1)
-    val combatState = CombatState.empty.transitionWith(List(
-      AddCombatantEvent(Some(combA), "alias", entity1),
-      AddCombatantEvent(None, null, entity2),
-      AddCombatantEvent(None, "boss", entity3)))
-    combatState
-  }
-
-  private def createCombatantEntity(name: String, healthDefinition: HealthDefinition, initiativeBonus: Int) = {
-    CombatantEntity(
-      EntityID.generateRandom().asStorageString,
-      name, healthDefinition, initiativeBonus,
-      "<html><body>" + name + "</body></html>")
+    buildRoster((Some(combA), "alias", entityFighter), (None, null, entityGoblin), (None, "boss", entityMinion))
   }
 
   private def storeToByteArray(combatState: CombatState): Array[Byte] = {
-    val s = new CombatSaveFile();
-    val os = new ByteArrayOutputStream();
+    val s = new CombatSaveFile()
+    val os = new ByteArrayOutputStream()
     s.save(os, combatState)
     os.toByteArray
   }
