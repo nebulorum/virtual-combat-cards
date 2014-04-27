@@ -153,6 +153,26 @@ class GroupFormPanelTest extends UISpecTestCase {
     assertThat(getFormName.isVisible)
   }
 
+  def testWithEmptyListAndValidFromWhenTriggeringSaveEvent_shouldSaveAndEnableListButton() {
+    getFormName.setText("Alice")
+    getFormAge.setText("28")
+    getMainWindow.getButton("form.innerButton").click()
+    assertThat(panelContentMatches(panel, Seq(alice)))
+    assertThat(getBackButton.isEnabled)
+    assertThat(getDeleteButton.isEnabled)
+  }
+
+  def testWithEmptyListAndValidFormWhenSaveEventTwice_shouldSaveOnlyOnce() {
+    getFormName.setText(alice.name)
+    getFormAge.setText(alice.age.toString)
+    getMainWindow.getButton("form.innerButton").click()
+    assertThat(panelContentMatches(panel, Seq(alice)))
+    getFormName.setText(bob.name)
+    getFormAge.setText(bob.age.toString)
+    getMainWindow.getButton("form.innerButton").click()
+    assertThat(panelContentMatches(panel, Seq(bob)))
+  }
+
   def testWhenFormIsInvalidTriggeringSaveEvent_shouldNotSaveContentAndStayInForm() {
     panel.setContent(Seq(alice))
     getGroupList.selectIndex(0)

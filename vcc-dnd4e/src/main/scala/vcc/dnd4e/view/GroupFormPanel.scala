@@ -60,7 +60,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
 
   def this(unifiedForm: Component with GroupFormPanel.Presenter[T], format: T => String) =
     this(unifiedForm, unifiedForm, format)
-  
+
   def setContent(newContent: Seq[T]) {
     groupList.listData = newContent
     showGroupCard()
@@ -121,7 +121,10 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
       case FormValueChanged(this.formComponent, valid) =>
         saveButton.enabled = valid
       case FormSave(this.formComponent) =>
-        if (formPresenter.isValid) doSave()
+        if (formPresenter.isValid) {
+          doSave()
+          showFormCard()
+        }
     }
   }
 
@@ -196,11 +199,13 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
 
   private def doSave() {
     val oldList = groupList.listData
+    val entry = formPresenter.getEntry
     val newList: Seq[T] = if (currentSelectedEntry.isDefined)
-      oldList.updated(groupList.selection.leadIndex, formPresenter.getEntry)
+      oldList.updated(currentSelectedEntry.get, entry)
     else
-      formPresenter.getEntry +: oldList
+      entry +: oldList
     groupList.listData = newList
+    currentSelectedEntry = newList.zipWithIndex.find(_._1 == entry).map(_._2)
   }
 
   private def createLabel(labelName: String, labelText: String) = {
@@ -222,8 +227,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
   }
 
   private def showFormCard() {
-    val isOldEntry = currentSelectedEntry.isDefined
-    deleteButton.enabled = isOldEntry
+    deleteButton.enabled = currentSelectedEntry.isDefined
     saveButton.enabled = formPresenter.isValid
     backButton.enabled = !groupList.listData.isEmpty
     copyButton.enabled = currentSelectedEntry.isDefined
@@ -231,7 +235,7 @@ class GroupFormPanel[T](formComponent: Component, formPresenter: GroupFormPanel.
   }
 
   private def decorateButton(button: Button) {
-    if(!Macify.isMac)
-      button.margin = new Insets(2,2,2,2)
+    if (!Macify.isMac)
+      button.margin = new Insets(2, 2, 2, 2)
   }
 }
