@@ -147,8 +147,12 @@ object Command {
 
   case class CompoundAction(actions: Seq[CombatStateAction]) extends CombatStateAction("Apply all of: " + actions.map(_.description).mkString("; ")) {
     def createCommandStream(): CommandStream[CombatState] = {
-      val streams = actions.map(_.createCommandStream())
-      streams.tail.foldLeft(streams.head)(_ followedBy _)
+      if (actions.isEmpty) {
+        CommandStream()
+      } else {
+        val streams = actions.map(_.createCommandStream())
+        streams.tail.foldLeft(streams.head)(_ followedBy _)
+      }
     }
   }
 }

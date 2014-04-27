@@ -89,7 +89,9 @@ class ActionTranslationTest extends SpecificationWithJUnit with SampleStateData 
     val effAction = AddEffect(combA, combB, someCondition, someDuration)
     val effCmds = Seq(AddEffectCommand(combA, combB, someCondition, someDuration))
 
-    "single compound action" !
+    "empty compound action" !
+      verifyActionProducesAllCases(CompoundAction(Seq()), Seq()) ^
+      "single compound action" !
       verifyActionProducesAllCases(CompoundAction(Seq(dmgAction)), dmgCmds) ^
       "damage and effect action" !
         verifyActionProducesAllCases(CompoundAction(Seq(dmgAction, effAction)), dmgCmds ++ effCmds) ^
