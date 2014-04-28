@@ -91,7 +91,9 @@ with GroupFormPanel.Presenter[Memento] {
   reactions += {
     case ValueChanged(this.damageField) if lastDamageValue != damageField.text =>
       toggleApply()
-      publish(FormValueChanged(this, rollDamage().isDefined))
+      val damageTermOption = rollDamage()
+      rollButton.enabled = damageTermOption.isDefined
+      publish(FormValueChanged(this, damageTermOption.isDefined))
     case ButtonClicked(this.markCheckbox) =>
       adjustMarkCheckboxes()
       toggleApply()

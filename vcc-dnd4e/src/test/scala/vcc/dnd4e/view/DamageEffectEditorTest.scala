@@ -137,6 +137,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
     getDamageField.setText("xx")
     assertThat(mustBeEqual(false, view.isValid))
     assertThat(getDamageValueField.textEquals(""))
+    assertThat(not(getRollButton.isEnabled))
   }
 
   def testSettingDamageToBadInput_shouldPublishEvent() {
@@ -168,7 +169,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
       val old = getDamageValueField.getText
       getRollButton.click()
       assertThat(blockIsTrue(old != getDamageValueField.getText))
-      assertThat(textInRange(getDamageValueField, 2 to 8001)) //5 to 32))
+      assertThat(textInRange(getDamageValueField, 2 to 8001))
     }
   }
 
