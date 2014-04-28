@@ -16,7 +16,7 @@
  */
 package vcc.dnd4e.view
 
-import org.uispec4j.Key
+import org.uispec4j.{TextBox, Key}
 import scala.swing.{Component, Reactor}
 import org.uispec4j.assertion.Assertion
 import vcc.dnd4e.view.DamageEffectEditor.{EffectMemento, Mark, Memento}
@@ -136,6 +136,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   def testSettingDamageToBadInput_shouldChangeToInvalid() {
     getDamageField.setText("xx")
     assertThat(mustBeEqual(false, view.isValid))
+    assertThat(getDamageValueField.textEquals(""))
   }
 
   def testSettingDamageToBadInput_shouldPublishEvent() {
@@ -148,9 +149,40 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   def testSettingDamageToGoodInput_shouldPublishEvent() {
     val probe = createFormValueChangedEventProbe()
     probe.listenTo(view)
-    getDamageField.setText("1d14 + 5")
+    getDamageField.setText("2d6 + 5")
     assertThat(mustBeEqual(Some(true), probe.getLastValue))
     assertThat(mustBeEqual(true, view.isValid))
+  }
+
+  def testSettingDamageToGoodInput_shouldProposeValueInRolledField() {
+    repeat(100) {
+      getDamageField.setText("2d6 + 5")
+      assertThat(textInRange(getDamageValueField, 7 to 17))
+    }
+    assertThat(not(getDamageValueField.isEditable))
+  }
+
+  def testClickRollButton_should() {
+    getDamageField.setText("d8000 + 1")
+    repeat(100) {
+      val old = getDamageValueField.getText
+      getRollButton.click()
+      assertThat(blockIsTrue(old != getDamageValueField.getText))
+      assertThat(textInRange(getDamageValueField, 2 to 8001)) //5 to 32))
+    }
+  }
+
+  def testFinishEditOfDamageFieldWithNoChange_shouldNotChangeRolledValue() {
+    getDamageField.setText("1d8000")
+    val oldRolledDamage = getDamageValueField.getText
+    getDamageField.focusLost()
+    assertThat("Rolled valued should match", blockIsTrue(oldRolledDamage == getDamageValueField.getText))
+  }
+
+  private def repeat(n: Int)(block: => Unit) {
+    (1 to 100).foreach {
+      y => block
+    }
   }
 
   def testSettingMementoThenClearing_shouldLeaveBlank() {
@@ -254,7 +286,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testDurationComboSelection_shouldBeSetByMemento() {
     val option = pickEntry(DurationComboEntry.durations)
-    view.setEntry(Memento(None, None, Some(EffectMemento(Some("cond"),duration = option))))
+    view.setEntry(Memento(None, None, Some(EffectMemento(Some("cond"), duration = option))))
     assertThat(getDurationCombo.selectionEquals(option.toString))
   }
 
@@ -375,6 +407,22 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
     }
   }
 
+  private def textInRange(textBox: TextBox, range: Range): Assertion = {
+    new Assertion {
+      override def check() = {
+        if (!(range contains textBox.getText.toInt))
+          throw new RuntimeException(s"${textBox.getText} is not in Range: $range")
+      }
+    }
+  }
+
+  private def blockIsTrue(block: => Boolean) = new Assertion {
+    override def check() = {
+      if(!block)
+        throw new RuntimeException("Expected true value")
+    }
+  }
+
   private def pickEntry[T](list: Seq[T]) = list(Random.nextInt(list.size))
 
   private def createFormValueChangedEventProbe(): ReactorProbe[Boolean] = {
@@ -409,5 +457,4 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
     def getLastValue = lastValue
   }
-
 }

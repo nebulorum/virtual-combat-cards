@@ -23,11 +23,9 @@ import scala.swing.event.ValueChanged
 import org.slf4j.LoggerFactory
 import vcc.dnd4e.view.helper.DamageParser
 import vcc.dnd4e.tracker.common._
-import vcc.dnd4e.tracker.common.Command.CombatStateAction
+import vcc.dnd4e.tracker.common.Command.{ApplyDamage, CombatStateAction, CompoundAction, AddEffect}
 import vcc.dnd4e.view.GroupFormPanel.FormValueChanged
-import vcc.dnd4e.tracker.common.Command.CompoundAction
 import scala.swing.event.ButtonClicked
-import vcc.dnd4e.tracker.common.Command.AddEffect
 import vcc.dnd4e.view.GroupFormPanel.FormSave
 import scala.swing.event.SelectionChanged
 
@@ -59,7 +57,7 @@ object DamageEffectEditor {
 
     private def formattedEffect = List(damage, effect.map(_.formatted)).flatMap(x => x).mkString("; ")
 
-    private def formattedDuration = effect.map(_.duration.toString).getOrElse("")
+    private def formattedDuration = effect.fold("")(_.duration.toString)
   }
 
 }
@@ -70,6 +68,7 @@ with GroupFormPanel.Presenter[Memento] {
 
   private val nameField = new TextField()
   private val damageField = new TextField()
+  private val damageValueField = new TextField()
   private val conditionField = new TextField() with AutoCompleteTextComponent
   private val markCheckbox = new CheckBox("Mark")
   private val permanentMarkCheckbox = new CheckBox("Can't be Superseded")
@@ -78,6 +77,11 @@ with GroupFormPanel.Presenter[Memento] {
     doApply()
   })
 
+  private val rollButton = new Button(Action("Roll") {
+    rollDamage()
+  })
+
+  private var lastDamageValue = ""
   private var targetID: Option[UnifiedCombatantID] = None
   private var sourceID: Option[UnifiedCombatantID] = None
 
@@ -85,9 +89,9 @@ with GroupFormPanel.Presenter[Memento] {
 
   listenTo(damageField, markCheckbox, conditionField, durationCombo.selection)
   reactions += {
-    case ValueChanged(this.damageField) =>
+    case ValueChanged(this.damageField) if lastDamageValue != damageField.text =>
       toggleApply()
-      publish(FormValueChanged(this, isValid))
+      publish(FormValueChanged(this, rollDamage().isDefined))
     case ButtonClicked(this.markCheckbox) =>
       adjustMarkCheckboxes()
       toggleApply()
@@ -106,7 +110,14 @@ with GroupFormPanel.Presenter[Memento] {
 
     damageField.name = "dee.damage"
     add(createLabel("Damage:"), "wrap")
-    add(damageField, "gap unrel, wrap")
+    add(damageField, "gap unrel, split 3, grow 100")
+
+    rollButton.name = "dee.roll"
+    add(rollButton, "gap unrel, grow 0")
+
+    damageValueField.name = "dee.damageValue"
+    damageValueField.editable = false
+    add(damageValueField, "grow 30, gap rel, wrap")
 
     conditionField.name = "dee.condition"
     conditionField.enableAutoComplete(loadAutoCompleteDictionary())
@@ -150,11 +161,10 @@ with GroupFormPanel.Presenter[Memento] {
       if (fieldAsOption(conditionField).isDefined || markValue != Mark.NoMark)
         Some(EffectMemento(fieldAsOption(conditionField), mark = markValue, duration = durationCombo.selection.item))
       else
-        None
-    )
+        None)
   }
 
-  def clear(): Unit = {
+  def clear() {
     damageField.text = ""
     conditionField.text = ""
     nameField.text = ""
@@ -232,7 +242,8 @@ with GroupFormPanel.Presenter[Memento] {
 
       val actions: List[CombatStateAction] = List(
         condition.map(AddEffect(target.combId, source.combId, _, duration)),
-        Mark.toCondition(markValue, source.combId).map(AddEffect(target.combId, source.combId, _, duration))
+        Mark.toCondition(markValue, source.combId).map(AddEffect(target.combId, source.combId, _, duration)),
+        fieldAsOption(damageValueField).map(value => ApplyDamage(target.combId, value.toInt))
       ).flatMap(x => x)
 
       panelDirector.requestAction(CompoundAction(actions))
@@ -250,6 +261,13 @@ with GroupFormPanel.Presenter[Memento] {
 
   private def toggleDurationCombo() {
     durationCombo.enabled = !isWhiteSpace(conditionField.text) || markCheckbox.selected
+  }
+
+  private def rollDamage() = {
+    val damageTerm = DamageParser.parseDamageExpression(damageField.text).right.toOption
+    damageValueField.text = damageTerm.fold("")(_(Map()).toString )
+    lastDamageValue = damageField.text
+    damageTerm
   }
 
   private def markValue: DamageEffectEditor.Mark.Value = {

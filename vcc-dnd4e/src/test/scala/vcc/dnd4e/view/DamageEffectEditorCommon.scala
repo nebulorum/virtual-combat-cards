@@ -67,6 +67,10 @@ trait DamageEffectEditorFieldSelector {
 
   protected def getDamageField = getMainWindow.getTextBox("dee.damage")
 
+  protected def getDamageValueField = getMainWindow.getTextBox("dee.damageValue")
+
+  protected def getRollButton = getMainWindow.getButton("dee.roll")
+
   protected def getMarkCheckbox = getMainWindow.getCheckBox("dee.mark")
 
   protected def getPermanentMarkCheckbox = getMainWindow.getCheckBox("dee.permanentMark")

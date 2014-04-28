@@ -20,9 +20,10 @@ import vcc.util.swing.MigPanel
 import vcc.infra.docking.{ScalaDockableComponent, DockID}
 import vcc.dnd4e.tracker.common.{CombatState, UnifiedCombatantID, UnifiedSequenceTable}
 import vcc.dnd4e.view.DamageEffectEditor.Memento
+import scala.swing.Label
 
 class EffectDamagePanel(director: PanelDirector)
-  extends MigPanel("") with ScalaDockableComponent with ContextObserver with CombatStateObserver {
+  extends MigPanel("ins 2 4 2 4", "[grow 100]", "[grow 0]10[grow 100]") with ScalaDockableComponent with ContextObserver with CombatStateObserver {
 
   private val sourceCombo = makeSourceCombo()
   private val damageEffectEditor = new DamageEffectEditor(director)
@@ -32,8 +33,14 @@ class EffectDamagePanel(director: PanelDirector)
   private var currentSource: Option[UnifiedCombatantID] = None
   private val mementoCache = scala.collection.mutable.Map[String, Seq[Memento]]()
 
-  add(sourceCombo, "wrap")
-  add(groupForm, "wrap")
+  init()
+
+  private def init() {
+    add(new Label("Acting: "), "split 2, grow 0")
+    add(sourceCombo, "wrap, growx 100")
+    add(groupForm, "growx 100, growy 100")
+    groupForm.setHeaderLabels("Power", "Powers")
+  }
 
   override def dockFocusComponent = sourceCombo.peer
 
