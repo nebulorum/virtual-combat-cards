@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ class CustomDockingAdapter(layoutBaseDirectory: File) extends InfoNodeDockAdapte
         vm.getView("damage"),
         new SplitWindow(false, 0.2434f,
           vm.getView("initiative"),
-          vm.getView("effect-editor"))),
+          vm.getView("effect-damage"))),
       new SplitWindow(true, 0.607f,
         new SplitWindow(false, 0.75f,
           vm.getView("sequence"),
@@ -65,6 +65,7 @@ class CustomDockingAdapter(layoutBaseDirectory: File) extends InfoNodeDockAdapte
     root.getWindowBar(Direction.LEFT).addTab(vm.getView("src-effects"))
     root.getWindowBar(Direction.LEFT).addTab(vm.getView("src-notes"))
     root.getWindowBar(Direction.DOWN).addTab(vm.getView("project-news"))
+    root.getWindowBar(Direction.DOWN).addTab(vm.getView("effect-editor"))
   }
 
   //Helper functions to handle layout
