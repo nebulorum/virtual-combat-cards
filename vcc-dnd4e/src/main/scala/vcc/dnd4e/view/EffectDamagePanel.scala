@@ -44,7 +44,7 @@ class EffectDamagePanel(director: PanelDirector)
 
   override def dockFocusComponent = sourceCombo.peer
 
-  override def dockID = DockID("EffectDamage")
+  override def dockID = DockID("effect-damage")
 
   override def dockTitle = "Effect and Damage"
 

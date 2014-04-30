@@ -63,7 +63,7 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
     List[DockableComponent](
       new DamageCommandPanel(director),
       new InitiativePanel(director),
-      new EffectEditorPanel(director, getNumberOfEditorPanel),
+      new EffectDamagePanel(director),
       new CombatCommentPanel(director),
       new SequenceTable(director),
 
@@ -74,7 +74,9 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
       new SourceCombatantCard(director),
       new SourceEffectViewPanel(director),
       new SourceCombatantCommentPanel(director),
-      news
+
+      news,
+      new EffectEditorPanel(director, getNumberOfEditorPanel)
     )
   }
 
@@ -103,9 +105,9 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   }
 
   private def registerDockableWithDockerAndRegisterKeyBinding() {
-    val defaultKeyMap: List[String] = List("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "alt F6", "alt F7", "alt F8", null)
-    val macKeyMap: List[String] = List("meta 1", "meta 2", "meta 3", "meta 4", "meta 5", "meta 6", "meta 7", "meta 8", "alt meta 6", "alt meta 7", "alt meta 8", null)
-    for ((dock, keystroke) <- docks.zip(if(Macify.isMac) macKeyMap else defaultKeyMap)) {
+    val defaultKeyMap: List[String] = List("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "alt F6", "alt F7", "alt F8", null, null)
+    val macKeyMap: List[String] = List("meta 1", "meta 2", "meta 3", "meta 4", "meta 5", "meta 6", "meta 7", "meta 8", "alt meta 6", "alt meta 7", "alt meta 8", null, null)
+    for ((dock, keystroke) <- docks.zip(if (Macify.isMac) macKeyMap else defaultKeyMap)) {
       docker.addDockable(dock)
       mainMenu.addToDockRestoreMenu(new MenuItem(new DockableRestoreAction(docker, dock.dockID, dock.dockTitle)))
       val fma = new MenuItem(new DockableFocusAction(docker, dock.dockID, dock.dockTitle))
