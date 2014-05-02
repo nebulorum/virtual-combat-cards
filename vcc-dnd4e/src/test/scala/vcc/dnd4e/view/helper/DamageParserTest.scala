@@ -26,10 +26,14 @@ class DamageParserTest extends SpecificationWithJUnit with DataTables {
   def is =
     "base parsers" ! baseMatcher ^
       "damage generator parsers" ! damageParser ^
-    "some error case" ! invalidInputs
+      "some error case" ! invalidInputs ^
+      "symbolic expression applier" ! applySymbolicExpression ^
+      "damage applier" ! applyDamageExpression ^
+      "dice roller" ! testDice ^
+      end
 
 
-  def baseMatcher = {
+  private def baseMatcher = {
     "term" | "parsed" |
       "2 + 3" !! opAdd(2, 3) |
       "2 - 4" !! opSub(2, 4) |
@@ -41,7 +45,7 @@ class DamageParserTest extends SpecificationWithJUnit with DataTables {
     }
   }
 
-  def damageParser = {
+  private def damageParser = {
     "expression" | "parsed" |
       "2 + 3" !! opAdd(2, 3) |
       "2d6" !! d(2, 6) |
@@ -56,16 +60,47 @@ class DamageParserTest extends SpecificationWithJUnit with DataTables {
     }
   }
 
-  def invalidInputs = {
+  private def invalidInputs = {
     "expression" | "isDamage" |
-    "2 + a" !! true |
-    "2 + s" !! true |
-    "2 + 1d4" !! false |
-    "2 + a" !! false |> {
+      "2 + a" !! true |
+      "2 + s" !! true |
+      "2 + 1d4" !! false |
+      "2 + a" !! false |> {
       (input, isDamage) =>
-        val result = if(isDamage) DamageParser.parseDamageExpression(input) else DamageParser.parseSymbolicExpression(input)
+        val result = if (isDamage) DamageParser.parseDamageExpression(input) else DamageParser.parseSymbolicExpression(input)
         result must beLeft
     }
+  }
+
+  private def applySymbolicExpression = {
+    "expression" | "values" | "result" |
+      "3 + 2 * S" !! Map("s" -> 10) !! 23 |
+      "3 + 2 * S + B" !! Map("s" -> 10, "b" -> 21) !! 44 |
+      "3 + 2 " !! Map.empty[String, Int] !! 5 |> {
+      (input: String, definitions: Map[String, Int], result: Int) =>
+        DamageParser.parseSymbolicExpression(input).right.get.apply(definitions) must_== result
+    }
+  }
+
+  private def applyDamageExpression = {
+    "expression" | "values" | "result" |
+      "3 + 3d6" !! Map("max" -> 1) !! 21 |
+      "3 + 7d1 " !! Map.empty[String, Int] !! 10 |
+      "3 + 2 " !! Map.empty[String, Int] !! 5 |> {
+      (input: String, definitions: Map[String, Int], result: Int) =>
+        DamageParser.parseDamageExpression(input).right.get.apply(definitions) must_== result
+    }
+  }
+
+  private def testDice = {
+      "expression" | "range" |
+      "1 + d8 " !! (2 to 9) |
+      "1 + d4 + d6 + d8 " !! (4 to 19) |
+      "2d6" !! (2 to 12) |> {
+        (expression, range) =>
+           val term = DamageParser.parseDamageExpression(expression).right.get
+          (1 to 100).map(_ => term(Map())).forall(range contains) must beTrue
+      }
   }
 
   implicit private def i(v: Int): Term = NumberTerm(v)

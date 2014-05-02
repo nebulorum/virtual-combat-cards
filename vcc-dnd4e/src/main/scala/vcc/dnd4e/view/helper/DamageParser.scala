@@ -42,7 +42,11 @@ object DamageParser extends JavaTokenParsers {
   case class DiceTerm(count: Int, size: Int) extends Term {
     def simplify(): Term = this
 
-    def apply(definitions: Map[String, Int]): Int = (1 to count).map(_ => DiceBag.D(size)).sum
+    def apply(definitions: Map[String, Int]): Int =
+      if (definitions.isDefinedAt("max"))
+        count * size
+      else
+        (1 to count).map(_ => DiceBag.D(size)).sum
   }
 
   case class Op(op: String, l: Term, r: Term) extends Term {
