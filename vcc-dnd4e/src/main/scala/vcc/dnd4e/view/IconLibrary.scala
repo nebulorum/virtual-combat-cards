@@ -53,4 +53,8 @@ object IconLibrary {
 
   val AddIcon = loadIcon("/vcc/dnd4e/images/add.png")
 
+  val DiceIcon = loadIcon("/vcc/dnd4e/images/dice.png")
+
+  val DiceMaxIcon = loadIcon("/vcc/dnd4e/images/dice_max.png")
+
 }
