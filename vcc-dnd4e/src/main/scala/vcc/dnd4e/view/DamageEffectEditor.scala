@@ -18,7 +18,7 @@ package vcc.dnd4e.view
 
 import vcc.util.swing.{AutoCompleteDictionary, AutoCompleteTextComponent, MigPanel}
 import scala.swing._
-import vcc.dnd4e.view.DamageEffectEditor.{EffectMemento, Mark, Memento}
+import vcc.dnd4e.view.DamageEffectEditor._
 import scala.swing.event.ValueChanged
 import org.slf4j.LoggerFactory
 import vcc.dnd4e.view.helper.DamageParser
@@ -47,8 +47,15 @@ object DamageEffectEditor {
       if (mark != Mark.NoMark) Some(mark.toString) else None
   }
 
-  case class EffectMemento(condition: Option[String], mark: Mark.Value = Mark.NoMark, duration: DurationComboEntry = DurationComboEntry.durations.head) {
-    def formatted = List(condition, Mark.formatted(mark)).flatMap(x => x).mkString("; ")
+  sealed trait ConditionDefinition {
+    def condition:String
+  }
+
+  case class BeneficialCondition(condition: String) extends ConditionDefinition
+  case class HarmfulCondition(condition: String) extends ConditionDefinition
+
+  case class EffectMemento(condition: Option[ConditionDefinition], mark: Mark.Value = Mark.NoMark, duration: DurationComboEntry = DurationComboEntry.durations.head) {
+    def formatted = List(condition.map(_.condition), Mark.formatted(mark)).flatMap(x => x).mkString("; ")
   }
 
   case class Memento(name: Option[String], damage: Option[String],
@@ -62,7 +69,7 @@ object DamageEffectEditor {
 
 }
 
-class DamageEffectEditor(panelDirector: PanelDirector) extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][]unrel[][]15[]")
+class DamageEffectEditor(panelDirector: PanelDirector) extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][][]unrel[][]15[]")
 with ContextObserver
 with GroupFormPanel.Presenter[Memento] {
 
@@ -72,13 +79,18 @@ with GroupFormPanel.Presenter[Memento] {
   private val conditionField = new TextField() with AutoCompleteTextComponent
   private val markCheckbox = new CheckBox("Mark")
   private val permanentMarkCheckbox = new CheckBox("Can't be Superseded")
+  private val beneficialCheckbox = new CheckBox("Beneficial to target")
   private val durationCombo = new ComboBox[DurationComboEntry](DurationComboEntry.durations)
   private val applyButton = new Button(Action("Apply") {
     doApply()
   })
 
-  private val rollButton = new Button(Action("Roll") {
-    rollDamage()
+  private val rollButton = new Button(Action("") {
+    rollDamage(max = false)
+  })
+
+  private val maxDamageButton = new Button(Action("") {
+    rollDamage(max = true)
   })
 
   private var lastDamageValue = ""
@@ -91,8 +103,9 @@ with GroupFormPanel.Presenter[Memento] {
   reactions += {
     case ValueChanged(this.damageField) if lastDamageValue != damageField.text =>
       toggleApply()
-      val damageTermOption = rollDamage()
+      val damageTermOption = rollDamage(max = false)
       rollButton.enabled = damageTermOption.isDefined
+      maxDamageButton.enabled = rollButton.enabled
       publish(FormValueChanged(this, damageTermOption.isDefined))
     case ButtonClicked(this.markCheckbox) =>
       adjustMarkCheckboxes()
@@ -101,21 +114,31 @@ with GroupFormPanel.Presenter[Memento] {
     case ValueChanged(this.conditionField) =>
       toggleApply()
       toggleDurationCombo()
+      toggleBeneficial()
     case SelectionChanged(_) =>
       applyButton.enabled = isDurationIsApplicable
   }
 
   private def init() {
+    rollButton.icon = IconLibrary.DiceIcon
+    rollButton.tooltip = "Roll damage dice"
+
+    maxDamageButton.icon = IconLibrary.DiceMaxIcon
+    maxDamageButton.tooltip = "Assign damage to maximum value of damage expression"
+
     nameField.name = "dee.name"
     add(createLabel("Name:"), "wrap")
     add(nameField, "gap unrel, wrap")
 
     damageField.name = "dee.damage"
     add(createLabel("Damage:"), "wrap")
-    add(damageField, "gap unrel, split 3, grow 100")
+    add(damageField, "gap unrel, split 4, grow 100")
 
     rollButton.name = "dee.roll"
     add(rollButton, "gap unrel, grow 0")
+
+    maxDamageButton.name = "dee.maxDamage"
+    add(maxDamageButton, "gap rel, grow 0")
 
     damageValueField.name = "dee.damageValue"
     damageValueField.editable = false
@@ -124,10 +147,14 @@ with GroupFormPanel.Presenter[Memento] {
     conditionField.name = "dee.condition"
     conditionField.enableAutoComplete(loadAutoCompleteDictionary())
     add(createLabel("Condition:"), "wrap")
-    add(conditionField, "gap unrel, wrap")
+    add(conditionField, "gap rel, wrap")
+
+    beneficialCheckbox.name = "dee.beneficial"
+    beneficialCheckbox.enabled = false
+    add(beneficialCheckbox, "wrap, gapleft unrel")
 
     markCheckbox.name = "dee.mark"
-    add(markCheckbox, "split 2, gap unrel")
+    add(markCheckbox, "split 2, gap rel")
 
     permanentMarkCheckbox.enabled = false
     permanentMarkCheckbox.name = "dee.permanentMark"
@@ -161,7 +188,7 @@ with GroupFormPanel.Presenter[Memento] {
       fieldAsOption(nameField),
       fieldAsOption(damageField),
       if (fieldAsOption(conditionField).isDefined || markValue != Mark.NoMark)
-        Some(EffectMemento(fieldAsOption(conditionField), mark = markValue, duration = durationCombo.selection.item))
+        Some(EffectMemento(buildConditionOption(), mark = markValue, duration = durationCombo.selection.item))
       else
         None)
   }
@@ -170,7 +197,7 @@ with GroupFormPanel.Presenter[Memento] {
     damageField.text = ""
     conditionField.text = ""
     nameField.text = ""
-    markCheckbox.selected = false
+    clearEffectFields()
     adjustMarkCheckboxes()
     toggleApply()
     toggleDurationCombo()
@@ -201,7 +228,11 @@ with GroupFormPanel.Presenter[Memento] {
   }
 
   private def setEffectFields(effect: EffectMemento) {
-    conditionField.text = effect.condition.getOrElse("")
+    beneficialCheckbox.selected = effect.condition.fold(false)({
+      case BeneficialCondition(condition) => true
+      case _ => false
+    })
+    conditionField.text = effect.condition.fold("")(_.condition)
     markCheckbox.selected = effect.mark != Mark.NoMark
     permanentMarkCheckbox.selected = effect.mark == Mark.Permanent
     durationCombo.selection.item = effect.duration
@@ -212,6 +243,7 @@ with GroupFormPanel.Presenter[Memento] {
     markCheckbox.selected = false
     permanentMarkCheckbox.selected = false
     durationCombo.selection.item = DurationComboEntry.durations.head
+    beneficialCheckbox.selected = false
   }
 
   private def isDamageApplicable: Boolean = isValid && !isWhiteSpace(damageField.text)
@@ -237,7 +269,7 @@ with GroupFormPanel.Presenter[Memento] {
   private def doApply() {
     publish(FormSave(this))
     if (sourceID.isDefined && targetID.isDefined) {
-      val condition = fieldAsOption(conditionField).map(Effect.Condition.Generic(_, beneficial = false))
+      val condition = fieldAsOption(conditionField).map(Effect.Condition.Generic(_, beneficial = beneficialCheckbox.selected))
       val source = sourceID.get
       val target = targetID.get
       val duration = durationCombo.selection.item.generate(source, target)
@@ -265,9 +297,14 @@ with GroupFormPanel.Presenter[Memento] {
     durationCombo.enabled = !isWhiteSpace(conditionField.text) || markCheckbox.selected
   }
 
-  private def rollDamage() = {
+  private def toggleBeneficial() {
+    beneficialCheckbox.enabled = !isWhiteSpace(conditionField.text)
+  }
+
+  private def rollDamage(max: Boolean) = {
     val damageTerm = DamageParser.parseDamageExpression(damageField.text).right.toOption
-    damageValueField.text = damageTerm.fold("")(_(Map()).toString )
+    val maxDamageOrNot: Map[String, Int] = if (max) Map("max" -> 1) else Map()
+    damageValueField.text = damageTerm.fold("")(_(maxDamageOrNot).toString)
     lastDamageValue = damageField.text
     damageTerm
   }
@@ -277,6 +314,12 @@ with GroupFormPanel.Presenter[Memento] {
     else if (markCheckbox.selected) Mark.Regular
     else Mark.NoMark
   }
+
+  private def buildConditionOption(): Option[ConditionDefinition] =
+    fieldAsOption(conditionField).map {
+      condition =>
+        if(beneficialCheckbox.selected)  BeneficialCondition(condition) else HarmfulCondition(condition)
+    }
 
   private def loadAutoCompleteDictionary(): AutoCompleteDictionary = {
     val logger = LoggerFactory.getLogger("startup")

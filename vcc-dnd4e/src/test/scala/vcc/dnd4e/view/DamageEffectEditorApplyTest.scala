@@ -19,7 +19,7 @@ package vcc.dnd4e.view
 import org.uispec4j.UISpecTestCase
 import vcc.dnd4e.tracker.common.{UnifiedCombatantID, Effect}
 import org.mockito.Mockito._
-import vcc.dnd4e.view.DamageEffectEditor.{EffectMemento, Mark, Memento}
+import vcc.dnd4e.view.DamageEffectEditor._
 import org.mockito.Matchers.{eq => callEq}
 import vcc.dnd4e.tracker.common.Command.{ApplyDamage, CombatStateAction, CompoundAction, AddEffect}
 import vcc.dnd4e.view.helper.DamageParser
@@ -28,17 +28,22 @@ class DamageEffectEditorApplyTest extends UISpecTestCase with DamageEffectEditor
 
   def testSingleConditionOnRoundBoundDuration() {
     setMementoApplyAndVerify(ucAO, ucBO,
-      Memento(None, None, Some(EffectMemento(Some("Stunned"), duration = pickDuration("End of source's next turn")))))
+      Memento(None, None, Some(EffectMemento(Some(HarmfulCondition("Stunned")), duration = pickDuration("End of source's next turn")))))
   }
 
   def testSingleConditionOnStaticDuration() {
     setMementoApplyAndVerify(ucAO, ucBO,
-      Memento(None, None, Some(EffectMemento(Some("Slowed"), duration = pickDuration("Save End")))))
+      Memento(None, None, Some(EffectMemento(Some(HarmfulCondition("Slowed")), duration = pickDuration("Save End")))))
+  }
+
+  def testSingleConditionOnStaticDurationAndBeneficial() {
+    setMementoApplyAndVerify(ucAO, ucBO,
+      Memento(None, None, Some(EffectMemento(Some(BeneficialCondition("Blessed")), duration = pickDuration("Save End")))))
   }
 
   def testConditionAndMarkOnStaticDuration() {
     setMementoApplyAndVerify(ucAO, ucBO,
-      Memento(None, None, Some(EffectMemento(Some("Dazed"), Mark.Permanent, pickDuration("Save End")))))
+      Memento(None, None, Some(EffectMemento(Some(HarmfulCondition("Dazed")), Mark.Permanent, pickDuration("Save End")))))
   }
 
   def testOnlyMarkWithRoundBoundDuration() {
@@ -75,7 +80,7 @@ class DamageEffectEditorApplyTest extends UISpecTestCase with DamageEffectEditor
       condition =>
         AddEffect(
           target.combId, source.combId,
-          Effect.Condition.Generic(condition, beneficial = false),
+          Effect.Condition.Generic(condition.condition, beneficial = condition.isInstanceOf[BeneficialCondition]),
           memento.effect.get.duration.generate(source, target)))
 
   private def makeMark(source: UnifiedCombatantID, target: UnifiedCombatantID, memento: Memento): Option[CombatStateAction] =

@@ -20,7 +20,7 @@ import org.uispec4j.{Window, UISpecAdapter, UISpecTestCase}
 import scala.swing.Frame
 import vcc.dnd4e.tracker.common.{Duration, Effect, UnifiedSequenceTable, CombatStateBuilder}
 import org.mockito.Mockito._
-import vcc.dnd4e.view.DamageEffectEditor.{Mark, EffectMemento, Memento}
+import vcc.dnd4e.view.DamageEffectEditor.{HarmfulCondition, Mark, EffectMemento, Memento}
 import vcc.dnd4e.tracker.common.Command.{AddEffect, CompoundAction}
 
 class EffectDamagePanelTest extends UISpecTestCase with CombatStateBuilder with DamageEffectEditorFieldSelector {
@@ -34,7 +34,7 @@ class EffectDamagePanelTest extends UISpecTestCase with CombatStateBuilder with 
   private val mementoSword = Memento(Some("Sword"), Some("1d8 + 1"), None)
 
   private val mementoSlower = Memento(Some("Slower"), None,
-    Some(EffectMemento(Some("Slowed"), Mark.NoMark, pickDuration("Save End"))))
+    Some(EffectMemento(Some(HarmfulCondition("Slowed")), Mark.NoMark, pickDuration("Save End"))))
 
   override def setUp() {
     super.setUp()
@@ -135,7 +135,7 @@ class EffectDamagePanelTest extends UISpecTestCase with CombatStateBuilder with 
     memento.damage.foreach(getDamageField.setText)
     memento.effect.foreach {
       effect =>
-        effect.condition.foreach(getConditionField.setText)
+        effect.condition.foreach(c => getConditionField.setText(c.condition))
         getDurationCombo.select(effect.duration.toString)
     }
   }

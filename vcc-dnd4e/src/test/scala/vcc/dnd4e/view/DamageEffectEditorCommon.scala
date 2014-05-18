@@ -79,5 +79,9 @@ trait DamageEffectEditorFieldSelector {
 
   protected def getApplyButton = getMainWindow.getButton("dee.apply")
 
+  protected def getBeneficialCheckbox = getMainWindow.getCheckBox("dee.beneficial")
+
+  protected def getMaxDamageButton = getMainWindow.getButton("dee.maxDamage")
+
 }
 
