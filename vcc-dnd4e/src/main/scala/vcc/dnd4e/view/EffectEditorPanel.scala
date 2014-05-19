@@ -94,8 +94,10 @@ with CombatStateObserver with ContextObserver with ScalaDockableComponent {
     val ctx = state.combatantOption(who)
     val cmb: UnifiedCombatant = if (ctx == None) otherCombatant else ctx.get
     val idx = activeModel.entries.indexWhere(c => c.matches(cmb))
+    _changing = true
     activeCombo.selection.index = idx
     activeCombo.repaint()
+    _changing = false
     switchActive(cmb.definition.entity.eid)
   }
 
