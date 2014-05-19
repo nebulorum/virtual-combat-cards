@@ -16,7 +16,7 @@
  */
 package vcc.dnd4e.view
 
-import vcc.util.swing.{AutoCompleteDictionary, AutoCompleteTextComponent, MigPanel}
+import vcc.util.swing._
 import scala.swing._
 import vcc.dnd4e.view.DamageEffectEditor._
 import scala.swing.event.ValueChanged
@@ -70,7 +70,7 @@ object DamageEffectEditor {
 }
 
 class DamageEffectEditor(panelDirector: PanelDirector) extends MigPanel("fillx", "[fill,grow]", "[][]unrel[][]unrel[][][][]unrel[][]15[]")
-with ContextObserver
+with ContextObserver with KeystrokeContainer
 with GroupFormPanel.Presenter[Memento] {
 
   private val nameField = new TextField()
@@ -167,6 +167,7 @@ with GroupFormPanel.Presenter[Memento] {
 
     applyButton.name = "dee.apply"
     applyButton.enabled = false
+    applyButton.tooltip = "Apply effect on target (Alt-E)"
     add(applyButton)
   }
 
@@ -220,12 +221,21 @@ with GroupFormPanel.Presenter[Memento] {
     toggleApply()
   }
 
+  def registerKeystroke() {
+    KeystrokeBinder.bindKeystrokeAction(applyButton, bindToRootPane = true,
+      KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt E", new ClickButtonAction("dee.apply", applyButton))
+  }
+
   private def toggleApply() {
     applyButton.enabled =
-      targetID.isDefined &&
-        isDamageApplicable ||
-        (hasEffectDefined && isDurationIsApplicable)
+      targetID.isDefined && sourceID.isDefined &&
+        !(isEffectNotApplicable || isDamageNotApplicable) &&
+        (isEffectApplicable || isDamageApplicable)
   }
+
+  private def isEffectNotApplicable = hasEffectDefined && !isDurationIsApplicable
+  private def isDamageNotApplicable = !isWhiteSpace(damageField.text) && !isValid
+  private def isEffectApplicable = hasEffectDefined && isDurationIsApplicable
 
   private def setEffectFields(effect: EffectMemento) {
     beneficialCheckbox.selected = effect.condition.fold(false)({
@@ -273,7 +283,6 @@ with GroupFormPanel.Presenter[Memento] {
       val source = sourceID.get
       val target = targetID.get
       val duration = durationCombo.selection.item.generate(source, target)
-
       val actions: List[CombatStateAction] = List(
         condition.map(AddEffect(target.combId, source.combId, _, duration)),
         Mark.toCondition(markValue, source.combId).map(AddEffect(target.combId, source.combId, _, duration)),

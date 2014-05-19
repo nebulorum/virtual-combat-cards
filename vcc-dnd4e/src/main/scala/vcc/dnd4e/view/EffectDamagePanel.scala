@@ -16,14 +16,15 @@
  */
 package vcc.dnd4e.view
 
-import vcc.util.swing.MigPanel
+import vcc.util.swing.{KeystrokeContainer, MigPanel}
 import vcc.infra.docking.{ScalaDockableComponent, DockID}
 import vcc.dnd4e.tracker.common.{CombatState, UnifiedCombatantID, UnifiedSequenceTable}
 import vcc.dnd4e.view.DamageEffectEditor.Memento
 import scala.swing.Label
 
 class EffectDamagePanel(director: PanelDirector)
-  extends MigPanel("ins 2 4 2 4", "[grow 100]", "[grow 0]10[grow 100]") with ScalaDockableComponent with ContextObserver with CombatStateObserver {
+  extends MigPanel("ins 2 4 2 4", "[grow 100]", "[grow 0]10[grow 100]") with ScalaDockableComponent
+  with KeystrokeContainer with ContextObserver with CombatStateObserver {
 
   private val sourceCombo = makeSourceCombo()
   private val damageEffectEditor = new DamageEffectEditor(director)
@@ -63,6 +64,10 @@ class EffectDamagePanel(director: PanelDirector)
   override def changeTargetContext(newContext: Option[UnifiedCombatantID]) {
     sourceCombo.changeTargetContext(newContext)
     damageEffectEditor.changeTargetContext(newContext)
+  }
+
+  def registerKeystroke() {
+     damageEffectEditor.registerKeystroke()
   }
 
   private def makeSourceCombo() = {

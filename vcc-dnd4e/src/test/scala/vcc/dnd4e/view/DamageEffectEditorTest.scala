@@ -67,8 +67,15 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
     assertThat(not(getBeneficialCheckbox.isEnabled))
   }
 
+  def testSourceNotSet_shouldNotEnableApply() {
+    view.changeTargetContext(Some(ucAO))
+    view.changeSourceContext(None)
+    getDamageField.setText("5")
+    assertThat(not(getApplyButton.isEnabled))
+  }
+
   def testAfterClearingFilledForm_shouldResetApplyAndDurationControls() {
-    view.changeTargetContext(Some(ucBO))
+    setSourceAndTarget(ucAO, ucBO)
     view.setEntry(Memento(Some("Name"), Some("1d4"), Some(EffectMemento(Some(HarmfulCondition("Condition")), Mark.Regular, DurationComboEntry.durations(3)))))
     assertThat(getApplyButton.isEnabled)
     assertThat(getDurationCombo.isEnabled)
@@ -79,7 +86,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testAfterSettingEmptyMementoOnFilledForm_shouldResetApplyAndDurationControls() {
-    view.changeTargetContext(Some(ucBO))
+    setSourceAndTarget(ucAO, ucBO)
     view.setEntry(Memento(Some("Name"), Some("1d4"), Some(EffectMemento(Some(HarmfulCondition("Condition")), Mark.Regular, DurationComboEntry.durations(3)))))
     assertThat(getApplyButton.isEnabled)
     assertThat(getDurationCombo.isEnabled)
@@ -90,7 +97,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testAfterSettingOnlyName_shouldNotHaveApplyEnabled() {
-    view.changeTargetContext(Some(ucAO))
+    setSourceAndTarget(ucB, ucAO)
     view.setEntry(Memento(None, Some("1"), effect = None))
     assertThat(getApplyButton.isEnabled)
     assertThat(not(getDurationCombo.isEnabled))
@@ -350,9 +357,8 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testChangingCheckedField_shouldTriggerValidationPresenterCheck() {
     val damageText = "1d10 + 1"
-    view.changeTargetContext(Some(ucAO))
+    setSourceAndTarget(ucB, ucAO)
     getDamageField.setText(damageText)
-
     assertThat(mustBeEqual(true, view.isValid))
     assertThat(getApplyButton.isEnabled)
   }
@@ -373,7 +379,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   def testClickApply_shouldTriggerApplyAndSave() {
     val probe = createSaveEventProbe()
-    view.changeTargetContext(Some(ucB))
+    setSourceAndTarget(ucB, ucB)
     getDamageField.setText("1d8 + 2")
     assertThat(getApplyButton.isEnabled)
     getApplyButton.click()
@@ -397,7 +403,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testSetAndClearOnlyDamage_shouldDisableApply() {
-    view.changeTargetContext(Some(ucB))
+    setSourceAndTarget(ucAO, ucB)
     getDamageField.setText("1d8 * 2")
     assertThat(getApplyButton.isEnabled)
     getDamageField.setText("")
@@ -439,7 +445,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   def testAfterGettingValidApplyChangingTargetToInvalid_shouldDisableApply() {
     setSourceAndTarget(ucAO, ucBO)
     getConditionField.setText("slowed")
-    getDurationCombo.select(DurationComboEntry.durations(DurationComboEntry.durations.length - 1).toString)
+    getDurationCombo.select(getTargetRoundBoundDurationValue)
     assertThat("apply button is armed", getApplyButton.isEnabled)
     view.changeTargetContext(Some(ucB))
     assertThat("apply button show not be armed", not(getApplyButton.isEnabled))
@@ -453,6 +459,27 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
     view.changeSourceContext(Some(ucB))
     assertThat("apply button show not be armed", not(getApplyButton.isEnabled))
   }
+
+  def testConditionAndDamageOnApplicableTarget_shouldEnableApply() {
+    setTargetRoundBoundConditionAndDamage()
+    setSourceAndTarget(ucAO, ucBO)
+    assertThat(getApplyButton.isEnabled)
+  }
+
+  def testConditionAndDamageOnInvalidTarget_shouldDisableApply() {
+    setTargetRoundBoundConditionAndDamage()
+    setSourceAndTarget(ucAO, ucB)
+    assertThat("Apply should be disabled", not(getApplyButton.isEnabled))
+  }
+
+  private def setTargetRoundBoundConditionAndDamage() {
+    getConditionField.setText("Slowed")
+    getDamageField.setText("1d8+4")
+    getDurationCombo.select(getTargetRoundBoundDurationValue)
+  }
+
+  private def getTargetRoundBoundDurationValue =
+    DurationComboEntry.durations(DurationComboEntry.durations.length - 1).toString
 
   private def assertAllDurationsValid(target: UnifiedCombatantID, source: UnifiedCombatantID) {
     setSourceAndTarget(source, target)
