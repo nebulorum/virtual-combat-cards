@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,21 +62,21 @@ class CombatantStateTableColorer extends ProjectionTableLabelFormatter[UnifiedCo
     else label.setIcon(null)
 
     label.setHorizontalAlignment(if (col == 1) SwingConstants.LEFT else SwingConstants.CENTER)
-    val color: Pair[Color, Color] = col match {
+    val color: (Color, Color) = col match {
       case 0 => if (cmb.isCharacter) charCallout else monsterCallout
       case 3 =>
         hs match {
           case Dead => dead
           case Dying => dying
           case Bloody => bloody
-          case _ if (isSelected) => getColorPair(label)
-          case _ if (is == null) => grayed
+          case _ if isSelected => getColorPair(label)
+          case _ if is == null => grayed
           case _ => normalBack
         }
-      case 5 if (is == Ready || is == Delaying) => ready
-      case _ if (isSelected) => (label.getBackground, label.getForeground)
-      case _ if (hs == Dead) => grayed
-      case _ if (is == null) => grayed
+      case 5 if is == Ready || is == Delaying => ready
+      case _ if isSelected => (label.getBackground, label.getForeground)
+      case _ if hs == Dead => grayed
+      case _ if is == null => grayed
       case _ => normalBack
     }
     if (isDropLocation) {
