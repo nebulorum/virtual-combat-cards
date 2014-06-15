@@ -43,7 +43,7 @@ trait ProjectionTableLabelFormatter[T] {
    * @param component Component to be colored
    * @param cp A pair of colors meaning (Background,Foreground)
    */
-  protected def setColorPair(component: JComponent, cp: Pair[Color, Color]) {
+  protected def setColorPair(component: JComponent, cp: (Color, Color)) {
     component.setBackground(cp._1)
     component.setForeground(cp._2)
   }
@@ -52,7 +52,7 @@ trait ProjectionTableLabelFormatter[T] {
    * Helper method to get the component's color
    * @return A pair of colors meaning (Background,Foreground)
    */
-  protected def getColorPair(component: JComponent): Pair[Color, Color] = (component.getBackground, component.getForeground)
+  protected def getColorPair(component: JComponent): (Color, Color) = (component.getBackground, component.getForeground)
 
   def render(label: javax.swing.JLabel, column: Int, isSelected: Boolean, isDropTarget: Boolean, entry: T)
 }
