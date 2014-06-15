@@ -70,6 +70,7 @@ object UpdateManager {
      */
     def fromString(str: String): Version = {
       str match {
+        case null => null
         case fullVersion(major, minor, patch, qualifier) =>
           val modQualifier = if (qualifier != null) qualifier.substring(1) else null
           Version(major.toInt, minor.toInt, patch.toInt, modQualifier)

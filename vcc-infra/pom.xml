@@ -30,5 +30,10 @@
             <artifactId>jetty-util</artifactId>
             <version>6.1.26</version>
         </dependency>
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-xml_${scala.versionShort}</artifactId>
+            <version>1.0.2</version>
+        </dependency>
     </dependencies>
 </project>

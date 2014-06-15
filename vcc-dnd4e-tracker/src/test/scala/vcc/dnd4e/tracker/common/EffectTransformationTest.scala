@@ -17,11 +17,12 @@
 package vcc.dnd4e.tracker.common
 
 import org.specs2.mutable.SpecificationWithJUnit
+import org.specs2.matcher.MatchResult
 
 class EffectTransformationTest extends SpecificationWithJUnit {
   val combA = CombatantID("A")
-  val goodCondition = Effect.Condition.Generic("a condition", true)
-  val badCondition = Effect.Condition.Generic("a condition", false)
+  val goodCondition = Effect.Condition.Generic("a condition", beneficial = true)
+  val badCondition = Effect.Condition.Generic("a condition", beneficial = false)
   val iob = InitiativeOrderID(CombatantID("B"), 0)
   val ioa = InitiativeOrderID(combA, 0)
   val durationEoNT = Duration.RoundBound(iob, Duration.Limit.EndOfNextTurn)
@@ -44,7 +45,7 @@ class EffectTransformationTest extends SpecificationWithJUnit {
       et.transform(Effect(combA, badCondition, durationEoNTS)).duration must_== durationEoTS
     }
 
-    "not change effect bount to another InitiativeOrderID" in {
+    "not change effect bound to another InitiativeOrderID" in {
       val et = EffectTransformation.startRound(ioa)
       durationEoNT must_== durationEoNT
       et.transform(Effect(combA, badCondition, durationEoNT)).duration must_== durationEoNT
@@ -63,10 +64,10 @@ class EffectTransformationTest extends SpecificationWithJUnit {
 
     "leave other unchanged" in {
       val et = EffectTransformation.startRound(ioa)
-      for (dur <- nonRoundBound) yield {
+      squashResult(for (dur <- nonRoundBound) yield {
         val eff = Effect(combA, badCondition, dur)
         et.transform(eff) must_== eff
-      }
+      })
     }
   }
 
@@ -77,7 +78,7 @@ class EffectTransformationTest extends SpecificationWithJUnit {
       et.transform(Effect(combA, badCondition, durationEoTS)) must beNull
     }
 
-    "not change effect bount to some other InitiativeOrderID" in {
+    "not change effect bound to some other InitiativeOrderID" in {
       val et = EffectTransformation.endRound(ioa)
       val eff1 = Effect(combA, badCondition, durationEoT)
       val eff2 = Effect(combA, badCondition, durationEoTS)
@@ -87,32 +88,33 @@ class EffectTransformationTest extends SpecificationWithJUnit {
 
     "leave other unchanged" in {
       val et = EffectTransformation.endRound(ioa)
-      for (dur <- nonRoundBound) yield {
+      squashResult(for (dur <- nonRoundBound) yield {
         val eff = Effect(combA, badCondition, dur)
         et.transform(eff) must_== eff
-      }
+      })
     }
   }
+
   "EffectTransformation.delayRound" should {
     "expire round bound effect that are beneficial to target when ally delays" in {
-      val et = EffectTransformation.processDelay(true, iob)
+      val et = EffectTransformation.processDelay(ally = true, iob)
       val eff = Effect(combA, goodCondition, durationEoT)
       et.transform(eff) must beNull
     }
 
     "keep round bound effect that are not beneficial to target when ally delays" in {
-      val et = EffectTransformation.processDelay(true, iob)
+      val et = EffectTransformation.processDelay(ally = true, iob)
       val eff = Effect(combA, badCondition, durationEoT)
       et.transform(eff) must_== eff
     }
 
     "expire effect that are sustained by delayer" in {
-      val et = EffectTransformation.processDelay(false, iob)
+      val et = EffectTransformation.processDelay(ally = false, iob)
       et.transform(Effect(combA, badCondition, durationEoTS)) must beNull
     }
 
     "preserve effect that are sustained by others" in {
-      val et = EffectTransformation.processDelay(false, ioa)
+      val et = EffectTransformation.processDelay(ally = false, ioa)
       val eff1 = Effect(combA, badCondition, durationEoTS)
       val eff2 = Effect(combA, badCondition, durationEoNTS)
       et.transform(eff1) must_== eff1
@@ -120,27 +122,27 @@ class EffectTransformationTest extends SpecificationWithJUnit {
     }
 
     "expire round bound effects that are not beneficial to enemy" in {
-      val et = EffectTransformation.processDelay(false, iob)
+      val et = EffectTransformation.processDelay(ally = false, iob)
       val eff = Effect(combA, badCondition, durationEoT)
 
       et.transform(eff) must beNull
     }
 
     "keep round bound effects that are beneficial to enemy" in {
-      val et = EffectTransformation.processDelay(false, iob)
+      val et = EffectTransformation.processDelay(ally = false, iob)
       val eff = Effect(combA, goodCondition, durationEoT)
       et.transform(eff) must_== eff
     }
 
     "not change non end of round bound effects" in {
-      val et = EffectTransformation.processDelay(true, ioa)
-      val et2 = EffectTransformation.processDelay(true, ioa)
+      val et = EffectTransformation.processDelay(ally = true, ioa)
+      val et2 = EffectTransformation.processDelay(ally = true, ioa)
       val lst: List[Duration] = durationSoNT :: durationEoNT :: nonRoundBound
-      for (dur <- lst) yield {
+      squashResult(for (dur <- lst) yield {
         val eff = Effect(combA, badCondition, dur)
         et.transform(eff) must_== eff
         et2.transform(eff) must_== eff
-      }
+      })
     }
   }
 
@@ -166,21 +168,20 @@ class EffectTransformationTest extends SpecificationWithJUnit {
     "leave all other duration unchanged" in {
       val et = EffectTransformation.applyRest
       val lst: List[Duration] = Duration.Other :: saveDurations ::: roundBoundDurations
-      for (dur <- lst) yield {
+      squashResult(for (dur <- lst) yield {
         val eff = Effect(combA, badCondition, dur)
         et.transform(eff) must_== eff
-      }
-
+      })
     }
   }
 
   "EffectTransformation.updateCondition" should {
     val effectId = EffectID(combA, 10)
     val otherEffectId = EffectID(combA, 9)
-    val oldCondition = Effect.Condition.Generic("old", false)
-    val newCondition = Effect.Condition.Generic("new", false)
+    val oldCondition = Effect.Condition.Generic("old", beneficial = false)
+    val newCondition = Effect.Condition.Generic("new", beneficial = false)
     val et = EffectTransformation.updateCondition(effectId, newCondition)
-    val markCondition = Effect.Condition.Mark(combA, false)
+    val markCondition = Effect.Condition.Mark(combA, permanent = false)
 
     "update condition if not mark and identified by EffectID" in {
       val eff = Effect(effectId, combA, oldCondition, durationEoT)
@@ -202,7 +203,7 @@ class EffectTransformationTest extends SpecificationWithJUnit {
   "EffectTransformation.sustainEffect" should {
     val effectId = EffectID(combA, 10)
     val otherEffectId = EffectID(combA, 9)
-    val anyCondition = Effect.Condition.Generic("old", false)
+    val anyCondition = Effect.Condition.Generic("old", beneficial = false)
     val et = EffectTransformation.sustainEffect(effectId)
 
     "increase duration of a sustainable effect identified by EffectID" in {
@@ -235,7 +236,7 @@ class EffectTransformationTest extends SpecificationWithJUnit {
   "EffectTransformation.cancelEffect" should {
     val effectId = EffectID(combA, 10)
     val otherEffectId = EffectID(combA, 9)
-    val anyCondition = Effect.Condition.Generic("old", false)
+    val anyCondition = Effect.Condition.Generic("old", beneficial = false)
     val et = EffectTransformation.cancelEffect(effectId)
 
     "cancel effect if identified by EffectID" in {
@@ -248,4 +249,7 @@ class EffectTransformationTest extends SpecificationWithJUnit {
       et.transform(eff) must_== eff
     }
   }
+
+  private def squashResult[T](seq: Seq[MatchResult[T]]): MatchResult[Any] = seq.tail.foldLeft(seq.head)(_ and _)
+
 }

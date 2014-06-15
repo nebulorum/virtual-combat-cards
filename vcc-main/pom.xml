@@ -14,9 +14,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-swing</artifactId>
-            <version>${scala.version}</version>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-swing_${scala.versionShort}</artifactId>
+            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.exnebula</groupId>

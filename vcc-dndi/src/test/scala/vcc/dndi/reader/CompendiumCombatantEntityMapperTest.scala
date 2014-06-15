@@ -17,6 +17,7 @@
 package vcc.dndi.reader
 
 import org.specs2.mutable.SpecificationWithJUnit
+import org.specs2.matcher.MatchResult
 
 /**
  * Service for helping map imported data to Compendium CombatantEntity fields.
@@ -24,21 +25,24 @@ import org.specs2.mutable.SpecificationWithJUnit
 class CompendiumCombatantEntityMapperTest extends SpecificationWithJUnit {
   "normalize name, role, class" in {
     val names = List("level", "name", "role", "race", "class", "type", "xp")
-    for (name <- names) yield {
+    squashResult(for (name <- names) yield {
       CompendiumCombatantEntityMapper.normalizeCompendiumNames(Map(name -> (name + "-value"))) must_== Map(("base:" + name) -> (name + "-value"))
-    }
+    })
   }
   "prepend text: to comment" in {
     val names = List("comment", "description")
-    for (name <- names) yield {
+    squashResult(for (name <- names) yield {
       CompendiumCombatantEntityMapper.normalizeCompendiumNames(Map(name -> (name + "-value"))) must_== Map(("text:" + name) -> (name + "-value"))
-    }
+    })
   }
 
   "prepend stat: to the others" in {
     val names = List("hey", "what", "is", "this", "test")
-    for (name <- names) yield {
+    squashResult(for (name <- names) yield {
       CompendiumCombatantEntityMapper.normalizeCompendiumNames(Map(name -> (name + "-value"))) must_== Map(("stat:" + name) -> (name + "-value"))
-    }
+    })
   }
+
+  private def squashResult[T](seq: Seq[MatchResult[T]]): MatchResult[Any] = seq.tail.foldLeft(seq.head)(_ and _)
+
 }

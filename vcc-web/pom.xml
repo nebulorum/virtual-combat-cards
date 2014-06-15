@@ -22,8 +22,23 @@
         <dependency>
             <groupId>org.scalatra</groupId>
             <artifactId>scalatra-specs2_${scala.versionShort}</artifactId>
-            <version>2.2.1</version>
+            <version>2.3.0.RC3</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.play</groupId>
+            <artifactId>play-json_${scala.versionShort}</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-xml_${scala.versionShort}</artifactId>
+            <version>1.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang.modules</groupId>
+            <artifactId>scala-parser-combinators_${scala.versionShort}</artifactId>
+            <version>1.0.1  </version>
         </dependency>
     </dependencies>
     <build>
