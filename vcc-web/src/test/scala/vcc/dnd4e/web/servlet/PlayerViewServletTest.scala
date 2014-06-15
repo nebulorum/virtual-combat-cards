@@ -22,10 +22,8 @@ import vcc.dnd4e.tracker.common.CombatState
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 
-//TODO Recover this test
-//@RunWith(classOf[JUnitRunner])
-//class PlayerViewServletTest extends MutableScalatraSpec {
-class PlayerViewServletFoo extends MutableScalatraSpec {
+@RunWith(classOf[JUnitRunner])
+class PlayerViewServletTest extends MutableScalatraSpec {
   args(sequential = true)
 
   addServlet(classOf[PlayerViewServlet], "/player-view")

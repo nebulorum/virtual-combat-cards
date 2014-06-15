@@ -23,10 +23,8 @@ import vcc.dnd4e.web.services.CaptureService
 import java.io.InputStream
 import vcc.dnd4e.web.services.CaptureService.{FailedCapture, SuccessfulCapture, Result}
 
-//TODO Recover this test
-//@RunWith(classOf[JUnitRunner])
-//class CaptureTest extends MutableScalatraSpec {
-class CaptureFoo extends MutableScalatraSpec {
+@RunWith(classOf[JUnitRunner])
+class CaptureTest extends MutableScalatraSpec {
   args(sequential = true)
 
   CaptureService.setService(mockService)
