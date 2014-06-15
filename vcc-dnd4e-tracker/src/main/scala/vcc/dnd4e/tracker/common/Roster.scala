@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,13 +102,4 @@ case class Roster[T](factory: RosterCombatantFactory[T], entries: Map[CombatantI
    */
   def isDefinedAt(combId: CombatantID): Boolean = entries.isDefinedAt(combId)
 
-
-  /**
-   * Compares all combatant that are in both rosters and returns differences between them.
-   */
-  def combatantDiff(that: Roster[T]): Set[CombatStateDiff[_]] = {
-    //TODO Remove type casting
-    val diffs = entries.map(p => (if (that.entries.isDefinedAt(p._1)) p._2.asInstanceOf[Combatant].diff(that.combatant(p._1).asInstanceOf[Combatant]) else Set()))
-    diffs.foldLeft(Set.empty[CombatStateDiff[_]])(_ ++ _)
-  }
 }

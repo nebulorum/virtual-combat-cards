@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2008-2010 - Thomas Santana <tms@exnebula.org>
+/*
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-//$Id$
 package vcc.dnd4e.tracker.common
 
 object InitiativeAction extends Enumeration {
@@ -43,21 +42,21 @@ object InitiativeTracker {
   def initialTracker(orderID: InitiativeOrderID, roll: Int): InitiativeTracker = InitiativeTracker(orderID, 0, roll, Waiting)
 
   val transformation: PartialFunction[(InitiativeTracker, InitiativeTracker, InitiativeAction.Value), InitiativeTracker] = {
-    case (it, first, StartRound) if (it.orderID == first.orderID && (it.state == Waiting || it.state == Ready)) =>
+    case (it, first, StartRound) if it.orderID == first.orderID && (it.state == Waiting || it.state == Ready) =>
       it.copy(round = it.round + 1, state = Acting)
-    case (it, first, EndRound) if (it.orderID == first.orderID && it.state == Acting) =>
+    case (it, first, EndRound) if it.orderID == first.orderID && it.state == Acting =>
       it.copy(state = Waiting)
-    case (it, first, EndRound) if (it.orderID == first.orderID && it.state == Readying) =>
+    case (it, first, EndRound) if it.orderID == first.orderID && it.state == Readying =>
       it.copy(state = Ready)
-    case (it, first, EndRound) if (it.orderID == first.orderID && it.state == Delaying) =>
+    case (it, first, EndRound) if it.orderID == first.orderID && it.state == Delaying =>
       it.copy(state = Waiting)
-    case (it, first, MoveUp) if (first.orderID != it.orderID && first.state != Acting && first.state != Readying && it.state == Delaying) =>
+    case (it, first, MoveUp) if first.orderID != it.orderID && first.state != Acting && first.state != Readying && it.state == Delaying =>
       it.copy(state = Acting)
-    case (it, first, ReadyAction) if (first.orderID == it.orderID && it.state == Acting) =>
+    case (it, first, ReadyAction) if first.orderID == it.orderID && it.state == Acting =>
       it.copy(state = Readying)
-    case (it, first, ExecuteReady) if (it.orderID != first.orderID && first.state == Acting && it.state == Ready) =>
+    case (it, first, ExecuteReady) if it.orderID != first.orderID && first.state == Acting && it.state == Ready =>
       it.copy(state = Waiting)
-    case (it, first, DelayAction) if (first.orderID == it.orderID && it.state == Acting) =>
+    case (it, first, DelayAction) if first.orderID == it.orderID && it.state == Acting =>
       it.copy(state = Delaying)
   }
 }
@@ -68,7 +67,7 @@ object InitiativeTracker {
  * @param round The round in which that InitiativeOrder is, used for traking number of action takes
  * @param state Current InitiativeState
  */
-case class InitiativeTracker(orderID: InitiativeOrderID, round: Int, initScore: Int, state: InitiativeState.Value) extends CombatantAspect {
+case class InitiativeTracker(orderID: InitiativeOrderID, round: Int, initScore: Int, state: InitiativeState.Value) {
 
   /**
    * Indicate it a given transformation can be applied.
@@ -85,11 +84,5 @@ case class InitiativeTracker(orderID: InitiativeOrderID, round: Int, initScore: 
    * @return The new InitiativeTracker with changes applied
    */
   def transform(first: InitiativeTracker, action: InitiativeAction.Value): InitiativeTracker = InitiativeTracker.transformation(this, first, action)
-
-  //FIXME
-  private def copyAtNextRound(state: InitiativeState.Value) = InitiativeTracker(this.orderID, this.round + 1, this.initScore, state)
-
-  //FIXME
-  private def copyAtSameRound(state: InitiativeState.Value) = InitiativeTracker(this.orderID, this.round, this.initScore, state)
 
 }

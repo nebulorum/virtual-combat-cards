@@ -22,7 +22,7 @@ package vcc.dnd4e.tracker.common
  * @param target The CombatantID  that owns this list. This is used to generate EffectID
  * @param effects All the effects on the target
  */
-case class EffectList(target: CombatantID, effects: List[Effect]) extends CombatantAspect {
+case class EffectList(target: CombatantID, effects: List[Effect]) {
 
   import Effect._
 

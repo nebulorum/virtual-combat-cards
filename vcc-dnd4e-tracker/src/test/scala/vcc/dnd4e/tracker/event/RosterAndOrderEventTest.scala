@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -121,7 +121,7 @@ class RosterAndOrderEventTest extends SpecificationWithJUnit with EventSourceSam
     val state = CombatState.empty.transitionWith(List(evtAddCombA))
     val nState = evt.transition(state)
 
-    state.roster.combatantDiff(nState.roster) must_== Set(CombatantCommentDiff(combA, "", "new comment"))
+    nState.roster.combatant(combA).comment must_==  "new comment"
   }
 
   private def stateWithMockCombatantCid(cid: CombatantID, evt: CombatStateEvent) = {

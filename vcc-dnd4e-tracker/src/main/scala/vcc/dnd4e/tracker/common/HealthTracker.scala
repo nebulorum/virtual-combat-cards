@@ -110,7 +110,7 @@ case class HealthTrackerDelta(damage: Int, temporaryHP: Int, deathStrikes: Int)
  * @param temporaryHP Temp HP
  * @param deathStrikes Current failed death saves
  */
-case class HealthTracker(currentHP: Int, temporaryHP: Int, deathStrikes: Int, base: HealthDefinition) extends CombatantAspect {
+case class HealthTracker(currentHP: Int, temporaryHP: Int, deathStrikes: Int, base: HealthDefinition) {
 
   def formattedStatus: String = {
     if (status == HealthStatus.Dying)

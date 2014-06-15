@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@ class CombatantTest extends SpecificationWithJUnit with Mockito with SampleState
     "Combatant" ^
       "can apply short rest" ! execRest(RestDuration.ShortRest) ^
       "can apply extends rest" ! execRest(RestDuration.ExtendedRest) ^
-      "update definition and preserve damage" ! execChangeDefinition ^
-      generateDiff ^
       end
 
   private def execRest(restDuration: RestDuration.Value) = {
@@ -41,42 +39,5 @@ class CombatantTest extends SpecificationWithJUnit with Mockito with SampleState
 
     (there was one(mEffects).transformAndFilter(EffectTransformation.applyRest)) and
       (there was one(mHealth).rest(restDuration))
-  }
-
-  private def generateDiff = {
-    val comb = Combatant(combDef)
-    "generates diff for" ^
-      "comment" ! {
-        val x = comb.copy(comment = "new comment")
-        x.diff(comb) must_== Set(CombatantCommentDiff(combA, "new comment", ""))
-      } ^
-      "health" ! {
-        val x = comb.copy(health = comb.health.applyDamage(10))
-        x.diff(comb) must_== Set(CombatantDiff(combA, x.health, comb.health))
-      } ^
-      "effect" ! {
-        val x = comb.copy(effects = comb.effects.addEffect(combB, Condition.Generic("a", true), Duration.EndOfEncounter))
-        x.diff(comb) must_== Set(CombatantDiff(combA, x.effects, comb.effects))
-      } ^
-      "definition and health" ! {
-        val x = comb.updateDefinition(CombatantRosterDefinition(combA, null, entityPc2))
-        x.diff(comb) must_== Set(
-          CombatantDiff(combA, x.definition, comb.definition),
-          CombatantDiff(combA, x.health, comb.health))
-      } ^
-      endp
-  }
-
-  private def execChangeDefinition = {
-    val comb = Combatant(combDef)
-    val damage = 10
-    val expectedNewHealth = HealthTracker.createTracker(entityPc2.healthDef).applyDamage(damage)
-    val combWithNewDefinition = comb.
-      copy(health = comb.health.applyDamage(damage)).
-      updateDefinition(CombatantRosterDefinition(combA, null, entityPc2))
-    (combWithNewDefinition.diff(comb) must_== Set(
-      CombatantDiff(combA, combWithNewDefinition.definition, comb.definition),
-      CombatantDiff(combA, expectedNewHealth, comb.health))) and
-      (combWithNewDefinition.health.currentHP must_== expectedNewHealth.currentHP)
   }
 }

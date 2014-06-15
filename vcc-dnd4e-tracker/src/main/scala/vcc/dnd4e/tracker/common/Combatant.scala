@@ -51,16 +51,6 @@ case class Combatant(definition: CombatantRosterDefinition, comment: String, hea
     )
   }
 
-  def diff(that: Combatant): Set[CombatStateDiff[_]] = {
-    var l = List.empty[CombatStateDiff[_]]
-
-    if (this.definition != that.definition) l = CombatantDiff(definition.cid, definition, that.definition) :: l
-    if (this.effects != that.effects) l = CombatantDiff(definition.cid, effects, that.effects) :: l
-    if (this.health != that.health) l = CombatantDiff(definition.cid, health, that.health) :: l
-    if (this.comment != that.comment) l = CombatantCommentDiff(definition.cid, this.comment, that.comment) :: l
-    l.toSet
-  }
-
   /**
    * Alias to the name in the definition
    */
@@ -75,7 +65,7 @@ case class Combatant(definition: CombatantRosterDefinition, comment: String, hea
 /**
  *  Defines the major CombatantRoster data for a tracker.transactional.Combatant, it is also used for views.
  */
-case class CombatantRosterDefinition(cid: CombatantID, alias: String, entity: CombatantEntity) extends CombatantAspect
+case class CombatantRosterDefinition(cid: CombatantID, alias: String, entity: CombatantEntity)
 
 object Combatant {
   def apply(definition: CombatantRosterDefinition): Combatant = {
