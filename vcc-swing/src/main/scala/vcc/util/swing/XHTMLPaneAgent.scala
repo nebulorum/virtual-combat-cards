@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,10 +65,10 @@ class XHTMLPaneAgent(baseDir: File) extends org.xhtmlrenderer.swing.NaiveUserAge
       logger.debug("SF-UA Requested load of image: {}", uri)
       val imgName = uri.substring(uri.lastIndexOf('/') + 1).toLowerCase
       val file = new File(new File(baseDir, "images"), imgName)
-      logger.debug("SF-UA Image {} mapped to {}", Array( uri, file))
+      logger.debug("SF-UA Image {} mapped to {}", Array(uri, file))
       if (file.exists && file.canRead && file.isFile) {
         try {
-          new ImageResource(AWTFSImage.createImage((new ImageIcon(file.toURI.toURL)).getImage))
+          new ImageResource(AWTFSImage.createImage(new ImageIcon(file.toURI.toURL).getImage))
         } catch {
           case e: Exception =>
             logger.warn("SF-UA Failed to load file " + file, e)
@@ -124,8 +124,10 @@ object AbortApplication {
       val out = new PrintStream(new FileOutputStream(new File("abort.log")))
       if (out != null) outputMessage(out)
       out.close()
+    } catch {
+      case _: Throwable =>
+        outputMessage(System.err)
     }
-    outputMessage(System.err)
     sys.exit()
   }
 }

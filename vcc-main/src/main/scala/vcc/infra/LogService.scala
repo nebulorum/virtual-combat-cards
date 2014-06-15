@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ import org.apache.log4j._
 import vcc.infra.startup.StartupStep
 
 object LogService extends StartupStep {
-  private val inDebugMode = (System.getProperty("vcc.console") != null)
+  private val inDebugMode = System.getProperty("vcc.console") != null
 
   object level extends Enumeration {
     val Debug = Value("DEBUG")
@@ -116,8 +116,10 @@ object AbnormalEnd {
       val out = new PrintStream(new FileOutputStream(new File("abort.log")))
       if (out != null) outputMessage(out)
       out.close()
+    } catch {
+      case _: Throwable =>
+        outputMessage(System.err)
     }
-    outputMessage(System.err)
     sys.exit()
   }
 }
