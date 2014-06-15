@@ -27,7 +27,7 @@ class AsynchronousDispatcherTest extends SpecificationWithJUnit {
       "enqueue once several tasks" ! echo().e2 ^
       "enqueue two task and get execution in order" ! echo().e3 ^
       "enqueue twice then execute" ! echo().e4 ^
-      "enqueue three fail second exeuction" ! echo().e5 ^
+      "enqueue three fail second execution" ! echo().e5 ^
       end
 
   case class echo() extends Mockito {

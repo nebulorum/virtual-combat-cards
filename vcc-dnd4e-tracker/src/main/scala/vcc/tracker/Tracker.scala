@@ -16,8 +16,10 @@
  */
 package vcc.tracker
 
-import actors.{DaemonActor, Actor}
+import scala.actors.{ActorRef, IScheduler, DaemonActor, Actor}
 import vcc.tracker.Tracker.{Controller, Observer}
+import scala.actors.scheduler.DaemonScheduler
+import scala.actors.migration.{ActorDSL, ActWithStash}
 
 object Tracker {
 
@@ -55,26 +57,22 @@ class Tracker[S](controller: Controller[S]) {
 
   private case class Initialize(state: S)
 
-  private val observerRelay: Actor = new ObserverActor()
-  private val tracker: Actor = new TrackerActor(controller)
-  observerRelay.start()
-  tracker.start()
+  private val observerRelay: ActorRef = ActorDSL.actor(new ObserverActor())
+  private val tracker: ActorRef = ActorDSL.actor(new TrackerActor(controller))
 
   private[tracker] def notifyObservers(newState: S) {
     observerRelay ! NotifyObserver(newState)
   }
 
-  private class ObserverActor extends DaemonActor {
+  private class ObserverActor extends ActWithStash {
     private var observers: List[Observer[S]] = Nil
 
-    def act() {
-      loop {
-        react {
-          case AddObserver(observer) => registerObserver(observer)
-          case NotifyObserver(newState) => notifyObservers(newState)
-          case s =>
-        }
-      }
+    override def scheduler: IScheduler = DaemonScheduler
+
+    def receive = {
+      case AddObserver(observer) => registerObserver(observer)
+      case NotifyObserver(newState) => notifyObservers(newState)
+      case s =>
     }
 
     private def registerObserver(observer: Tracker.Observer[S]) {
@@ -94,19 +92,17 @@ class Tracker[S](controller: Controller[S]) {
     }
   }
 
-  private class TrackerActor(controller: Controller[S]) extends DaemonActor {
-    def act() {
-      loop {
-        react {
-          case Redo => notifyObserversIfStateDefined(controller.redo())
-          case Undo => notifyObserversIfStateDefined(controller.undo())
-          case ClearHistory => controller.clearHistory()
-          case Dispatch(action, rulingProvider) =>
-            notifyObserversIfStateDefined(controller.dispatchAction(action, rulingProvider))
-          case Initialize(state) => initializeState(state)
-          case _ =>
-        }
-      }
+  private class TrackerActor(controller: Controller[S]) extends ActWithStash {
+    override def scheduler: IScheduler = DaemonScheduler
+
+    def receive = {
+      case Redo => notifyObserversIfStateDefined(controller.redo())
+      case Undo => notifyObserversIfStateDefined(controller.undo())
+      case ClearHistory => controller.clearHistory()
+      case Dispatch(action, rulingProvider) =>
+        notifyObserversIfStateDefined(controller.dispatchAction(action, rulingProvider))
+      case Initialize(state) => initializeState(state)
+      case _ =>
     }
 
     private def initializeState(initialState: S) {

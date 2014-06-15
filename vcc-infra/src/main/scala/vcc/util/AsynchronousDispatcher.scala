@@ -16,7 +16,8 @@
  */
 package vcc.util
 
-import scala.actors.Actor._
+import scala.actors.migration.{ActWithStash, ActorDSL}
+
 
 trait AsynchronousTask[T] {
   def execute(): T
@@ -30,25 +31,22 @@ object AsynchronousDispatcher {
     def taskFailed(task: AsynchronousTask[T], error: Throwable)
 
   }
-
 }
 
 class AsynchronousDispatcher[T]() {
 
   private var observer: AsynchronousDispatcher.Observer[T] = null
-  private val worker = actor {
-    loop {
-      react {
-        case task: AsynchronousTask[T] =>
-          try {
-            observer.taskComplete(task, task.execute())
-          } catch {
-            case s: Exception =>
-              observer.taskFailed(task, s)
-          }
-      }
+  private val worker = ActorDSL.actor(new ActWithStash {
+    override def receive = {
+      case task: AsynchronousTask[T] =>
+        try {
+          observer.taskComplete(task, task.execute())
+        } catch {
+          case s: Exception =>
+            observer.taskFailed(task, s)
+        }
     }
-  }
+  })
 
   private case class Complete(task: AsynchronousTask[T])
 
