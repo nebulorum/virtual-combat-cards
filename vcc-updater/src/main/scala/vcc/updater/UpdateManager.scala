@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ object UpdateManager {
     def versionString: String = major + "." + minor + "." + patch + (if (extra != null) "-" + extra else "")
 
     def isPatch(other: Version): Boolean = {
-      ((this.major == other.major) && (this.minor == other.minor) && this.patch > other.patch)
+      (this.major == other.major) && (this.minor == other.minor) && this.patch > other.patch
     }
 
     def isEligibleUpgradeFromVersion(fromVersion: Version): Boolean = {
@@ -197,7 +197,7 @@ object UpdateManager {
     }
     umd.visible = true
 
-    umd.showMessage(false, "Checking for a new version...")
+    umd.showMessage(wait = false, "Checking for a new version...")
 
     val releaseFile = getRemoteFile(url)
 
@@ -211,27 +211,27 @@ object UpdateManager {
           val release = releaseOpt.get
 
           val dfile = umd.customPanel(new DownloadPanel(release.download, java.io.File.createTempFile("vcc", ".zip")))
-          if (dfile != null) {
-            umd.showMessage(false, "Checking and unpacking downloaded file...")
+          if (dfile.isDefined) {
+            umd.showMessage(wait = false, "Checking and unpacking downloaded file...")
             // We have the file
-            if (checkFileMD5Sum(dfile, release.md5)) {
-              PackageUtil.extractFilesFromZip(dfile, getInstallDirectory)
-              umd.showMessage(true, "<html><body>Download and extraction completed successfully.<p>To update Virtual Combat Cards, exit and restart it.</body></html>")
+            if (checkFileMD5Sum(dfile.get, release.md5)) {
+              PackageUtil.extractFilesFromZip(dfile.get, getInstallDirectory)
+              umd.showMessage(wait = true, "<html><body>Download and extraction completed successfully.<p>To update Virtual Combat Cards, exit and restart it.</body></html>")
             } else {
-              umd.showMessage(true, "<html><body>Downloaded file seems to be corrupted. <p> Download and extract manually or report a bug on the site</body></html>")
+              umd.showMessage(wait = true, "<html><body>Downloaded file seems to be corrupted. <p> Download and extract manually or report a bug on the site</body></html>")
               SwingHelper.openDesktopBrowser(release.info)
             }
           } else {
-            umd.showMessage(true, "Download failed or cancelled.")
+            umd.showMessage(wait = true, "Download failed or cancelled.")
           }
         } else {
           // No version selected
         }
       } else {
-        umd.showMessage(true, "Your version is up to date.")
+        umd.showMessage(wait = true, "Your version is up to date.")
       }
     } else {
-      umd.showMessage(true, "<html><body>Failed to download Releases history from:<br>" + url + "</body></html>")
+      umd.showMessage(wait = true, "<html><body>Failed to download Releases history from:<br>" + url + "</body></html>")
     }
     umd.dispose()
   }

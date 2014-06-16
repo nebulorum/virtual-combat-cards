@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ class ReleaseSelectPanel(releases: Seq[(Symbol, Release)], hasMore: Boolean) ext
     'RC -> "Release Candidate, may be unstable",
     'UPGRADE -> "Upgrade includes new features",
     'PATCH -> "Patch to current version"
-    ).withDefaultValue("?")
+  ).withDefaultValue("?")
   okButton.enabled = false
   infoButton.enabled = false
 
@@ -55,7 +55,7 @@ class ReleaseSelectPanel(releases: Seq[(Symbol, Release)], hasMore: Boolean) ext
     addSeparator(null)
     add(new Label(
       "<html><body style='font-weight: normal;'><b style='color: red'>Important:</b> Additional patch version are available.<br>" +
-              "Check for available patches after this update.</body></html>"), "wrap")
+        "Check for available patches after this update.</body></html>"), "wrap")
     addSeparator(null)
   }
 
@@ -68,29 +68,18 @@ class ReleaseSelectPanel(releases: Seq[(Symbol, Release)], hasMore: Boolean) ext
 
   reactions += {
     case ButtonClicked(this.okButton) =>
-      remote ! releases(selected)._2
+      notifyController(Some(releases(selected)._2))
 
     case ButtonClicked(this.cancelButton) =>
-      remote ! None
+      notifyController(None)
 
     case ButtonClicked(this.infoButton) =>
       SwingHelper.openDesktopBrowser(releases(selected)._2.info)
 
     case ButtonClicked(button) =>
       selected = opts.indexOf(button)
-      okButton.enabled = (selected >= 0)
-      infoButton.enabled = (selected >= 0)
-  }
-
-  //This is need byt AbstractPanel 
-  def returnHandler(msg: Any): Option[Release] = {
-    msg match {
-      case r: Release => Some(r)
-      case None => None
-      case s =>
-        None
-    }
+      okButton.enabled = selected >= 0
+      infoButton.enabled = selected >= 0
   }
 
 }
-

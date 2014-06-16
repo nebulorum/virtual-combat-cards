@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,20 +18,16 @@ package vcc.util.swing
 
 import scala.swing._
 import vcc.util.swing.multipanel._
-import scala.actors.Actor.receive
+import scala.concurrent.SyncVar
 
 trait MultiPanel extends RootPanel {
 
-  private val controller = new Controller(this)
-  private val selfActor = scala.actors.Actor.self
-  controller.start()
-
   def showMessage(wait: Boolean, msg: String) {
     val p = new InformationPanel(wait, msg)
-    controller ! SetPanel(selfActor, p)
-    if (wait) receive {
-      case s => p.returnHandler(s)
-    }
+    val returnValue = new SyncVar[Boolean]
+    p.setRemote(returnValue)
+    contents = p
+    if (wait) returnValue.get
   }
 
   /**
@@ -40,9 +36,9 @@ trait MultiPanel extends RootPanel {
    * @return The value of what handler did
    */
   def customPanel[T](panel: AbstractPanel[T]): T = {
-    controller ! SetPanel(selfActor, panel)
-    receive {
-      case s => panel.returnHandler(s)
-    }
+    val returnValue = new SyncVar[T]
+    panel.setRemote(returnValue)
+    contents = panel
+    returnValue.get
   }
 }

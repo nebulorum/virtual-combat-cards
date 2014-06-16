@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ package vcc.updater
 
 import java.io.File
 import java.net.URL
-import actors.{TIMEOUT, Actor}
+import scala.actors.{ActorRef, TIMEOUT, Actor}
 
 object Downloader {
 
@@ -41,9 +41,9 @@ object Downloader {
 class Downloader(val url: URL, val destFile: File) extends Runnable {
 
   private val dThread = new Thread(this)
-  private var _peer: Actor = null
+  private var _peer: ActorRef = null
 
-  def start(peer: Actor) {
+  def start(peer: ActorRef) {
     _peer = peer
     dThread.start()
   }
@@ -118,7 +118,7 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
           }
         }
       }
-      //COmplete sent it out.
+      //Complete sent it out.
       if (downloaded == size) {
         _peer ! Downloader.Progress(downloaded, size)
         completed = true

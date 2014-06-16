@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,26 +17,41 @@
 package vcc.updater
 
 import java.net.URL
-import scala.actors.Actor
+import scala.actors.{TIMEOUT, Actor}
 import org.junit.{Assert, Test, Ignore}
+import scala.actors.migration.{ActWithStash, ActorDSL}
+import java.io.File
+import scala.concurrent.duration._
 
 class DownloaderTest {
 
-  def peerActor(parent: Actor, f: PartialFunction[Any, Boolean]) = Actor.actor {
+  //TODO This must be replace by proper Akka testing
+  def peerActor(parent: Actor, f: PartialFunction[Any, Boolean]) = ActorDSL.actor(new ActWithStash {
+
     var running = true
     var trouble: Exception = null
-    while (running) {
-      try {
-        running = Actor.receiveWithin(10000)(f)
-      } catch {
-        case e: Exception =>
-          trouble = e
-          running = false
-      }
+
+    override def preStart() {
+      context.setReceiveTimeout(10000 millisecond)
     }
-    if (trouble != null) parent ! trouble
-    else parent ! 'DONE
-  }
+
+    def receive = {
+      case ReceiveTimeout =>
+        parent ! TIMEOUT
+      case msg if f.isDefinedAt(msg) =>
+        try {
+          running = f(msg)
+          if(!running) {
+            parent ! 'DONE
+            context.stop(self)
+          }
+        } catch {
+          case e:Exception =>
+            parent ! e
+            context.stop(self)
+        }
+    }
+  })
 
   private val testActorBehaviour: PartialFunction[Any, Unit] = {
     case 'DONE => Assert.assertTrue(true)
@@ -44,7 +59,7 @@ class DownloaderTest {
   }
 
   def executeIfForReal(block: => Unit) {
-    if (System.getProperty("vcc.test.download") != null)
+    if (System.getProperty("vcc.test.download") != null || true)
       block
     else
       Assert.assertTrue(true)
@@ -53,14 +68,14 @@ class DownloaderTest {
   @Test
   def testDownloadBadURL() {
     executeIfForReal {
-      val file = java.io.File.createTempFile("vcc", ".zip")
+      val file = File.createTempFile("vcc", ".zip")
       val down = new Downloader(new URL("http://127.0.0.1/a.zip"), file)
       down.start(peerActor(Actor.self, {
         case Downloader.Failed(msg) =>
           false // End run correctly
         case Downloader.DownloadActor(actor) =>
           true
-        case scala.actors.TIMEOUT =>
+        case TIMEOUT =>
           throw new Exception("Timeout, should not get here")
           false
         case s =>
@@ -77,7 +92,7 @@ class DownloaderTest {
   @Test
   def testDownloadingXML() {
     executeIfForReal {
-      val file = java.io.File.createTempFile("vcc", ".xml")
+      val file = File.createTempFile("vcc", ".xml")
       val downloader = new Downloader(new URL("http://www.exnebula.org/files/release-history/vcc/vcc-all.xml"), file)
       downloader.start(peerActor(Actor.self, {
         case scala.actors.TIMEOUT =>
@@ -88,8 +103,8 @@ class DownloaderTest {
           false
         case Downloader.DownloadActor(actor) =>
           true
-        case Downloader.Progress(down, total) if (down == total) =>
-          if (down == total) println("COmpleted!")
+        case Downloader.Progress(down, total) if down == total =>
+          if (down == total) println("Completed!")
           false
         case Downloader.Progress(down, total) =>
           println("Progress :" + down + "/" + total)
@@ -106,7 +121,7 @@ class DownloaderTest {
   @Ignore()
   def testWithActualZipFile() {
     executeIfForReal {
-      val file = java.io.File.createTempFile("vcc", ".zip")
+      val file = File.createTempFile("vcc", ".zip")
       val downloader = new Downloader(new URL("http://www.exnebula.org/files/vcc/vcc-0.10.zip"), file)
       downloader.start(peerActor(Actor.self, {
         case scala.actors.TIMEOUT =>
@@ -117,7 +132,7 @@ class DownloaderTest {
           false
         case Downloader.DownloadActor(actor) =>
           true
-        case Downloader.Progress(down, total) if (down == total) =>
+        case Downloader.Progress(down, total) if down == total =>
           if (down == total) println("Completed!")
           false
         case Downloader.Progress(down, total) =>
@@ -135,7 +150,7 @@ class DownloaderTest {
   @Test
   def testCancelMidDownload() {
     executeIfForReal {
-      val file = java.io.File.createTempFile("vcc", ".xml")
+      val file = File.createTempFile("vcc", ".xml")
       val downloader = new Downloader(new URL("http://www.exnebula.org/files/release-history/vcc/vcc-all.xml"), file)
 
       downloader.start(peerActor(Actor.self, {
@@ -150,7 +165,7 @@ class DownloaderTest {
           Thread.sleep(50)
           dActor ! Downloader.Cancel()
           true
-        case Downloader.Progress(down, total) if (down == total) =>
+        case Downloader.Progress(down, total) if down == total =>
           throw new Exception("Should have cancelled")
           false
         case Downloader.Progress(down, total) =>

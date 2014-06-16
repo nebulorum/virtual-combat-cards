@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,16 +16,20 @@
  */
 package vcc.util.swing.multipanel
 
-import scala.actors.Actor
 import scala.swing._
+import scala.concurrent.SyncVar
 
 trait AbstractPanel[T] extends Panel {
-  
-  self : Panel =>
-  
-  protected var remote:Actor = null
- 
-  def setRemote(actor:Actor) { remote=actor}
-  
-  def returnHandler(msg:Any):T
+
+  self: Panel =>
+
+  private var barrier: SyncVar[T] = null
+
+  def setRemote(returnValue: SyncVar[T]) {
+    barrier = returnValue
+  }
+
+  def notifyController(value: T) {
+    barrier.put(value)
+  }
 }
