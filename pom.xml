@@ -93,22 +93,11 @@
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
         </dependency>
-        <!-- TODO these should be removed -->
         <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-actors</artifactId>
-            <version>${scala.version}</version>
+          <groupId>com.typesafe.akka</groupId>
+          <artifactId>akka-actor_${scala.versionShort}</artifactId>
+          <version>2.3.2</version>
         </dependency>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-actors-migration_${scala.versionShort}</artifactId>
-            <version>1.1.0</version>
-        </dependency>
-        <!--<dependency>-->
-          <!--<groupId>com.typesafe.akka</groupId>-->
-          <!--<artifactId>akka-actor_${scala.versionShort}</artifactId>-->
-          <!--<version>2.3.2</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>

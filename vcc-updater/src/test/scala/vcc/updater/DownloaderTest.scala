@@ -18,17 +18,18 @@ package vcc.updater
 
 import java.net.URL
 import org.junit.{Assert, Test, Ignore}
-import scala.actors.migration.{ActWithStash, ActorDSL}
+import akka.actor.{ActorSystem, ReceiveTimeout, ActorDSL}
+import akka.actor.ActorDSL._
 import java.io.File
 import scala.concurrent.duration._
-import scala.concurrent.SyncVar
-import scala.actors.threadpool.TimeoutException
+import scala.concurrent.{TimeoutException, SyncVar}
 import scala.language.postfixOps
 
 class DownloaderTest {
 
-  //TODO This must be replace by proper Akka testing
-  private def peerActor(parent: SyncVar[Option[Throwable]], f: PartialFunction[Any, Boolean]) = ActorDSL.actor(new ActWithStash {
+  private val system = ActorSystem("migration-system")
+
+  private def peerActor(parent: SyncVar[Option[Throwable]], f: PartialFunction[Any, Boolean]) = ActorDSL.actor(system)(new ActWithStash {
 
     var running = true
     var trouble: Exception = null
@@ -37,7 +38,7 @@ class DownloaderTest {
       context.setReceiveTimeout(10000 millisecond)
     }
 
-    def receive = {
+    override def receive = {
       case ReceiveTimeout =>
         parent.put(Some(new TimeoutException()))
       case msg if f.isDefinedAt(msg) =>
@@ -61,7 +62,7 @@ class DownloaderTest {
   }
 
   private def executeIfForReal(block: => Unit) {
-    if (System.getProperty("vcc.test.download") != null || true)
+    if (System.getProperty("vcc.test.download") != null)
       block
     else
       Assert.assertTrue(true)
@@ -156,7 +157,7 @@ class DownloaderTest {
         case Downloader.DownloadActor(actor) =>
           val dActor = actor
           Thread.sleep(50)
-         dActor.put(true)
+          dActor.put(true)
           true
         case Downloader.Progress(down, total) if down == total =>
           throw new Exception("Should have cancelled")

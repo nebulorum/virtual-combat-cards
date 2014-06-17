@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
  */
 package vcc.util
 
-import scala.actors.migration.{ActWithStash, ActorDSL}
-
+import akka.actor.ActorDSL._
+import akka.actor.{ActorSystem, ActorDSL}
 
 trait AsynchronousTask[T] {
   def execute(): T
@@ -31,12 +31,13 @@ object AsynchronousDispatcher {
     def taskFailed(task: AsynchronousTask[T], error: Throwable)
 
   }
+
 }
 
 class AsynchronousDispatcher[T]() {
-
+  private val system = ActorSystem("migration-system")
   private var observer: AsynchronousDispatcher.Observer[T] = null
-  private val worker = ActorDSL.actor(new ActWithStash {
+  private val worker = ActorDSL.actor(system)(new ActWithStash {
     override def receive = {
       case task: AsynchronousTask[T] =>
         try {

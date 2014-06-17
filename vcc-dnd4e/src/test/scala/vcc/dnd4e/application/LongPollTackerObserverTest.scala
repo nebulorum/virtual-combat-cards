@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,8 @@ import org.specs2.specification.AroundExample
 import org.specs2.time.TimeConversions
 import org.specs2.execute.{AsResult, Result}
 import org.specs2.execute.EventuallyResults._
-import scala.actors.migration.{ActWithStash, ActorDSL}
+import akka.actor.{ActorSystem, ReceiveTimeout, ActorDSL}
+import akka.actor.ActorDSL._
 
 trait RetryExamples extends AroundExample {
 
@@ -35,6 +36,8 @@ trait RetryExamples extends AroundExample {
 class LongPollTackerObserverTest extends SpecificationWithJUnit with RetryExamples {
 
   import scala.concurrent.duration._
+
+  private val system = ActorSystem("migration-system")
 
   def is = "LongPollTackerObserver".title ^
     "send in time" ! s().e1 ^
@@ -96,9 +99,9 @@ class LongPollTackerObserverTest extends SpecificationWithJUnit with RetryExampl
     private def updateObserverIn(sleep: Duration, value: Int) = executeBlockIn(sleep) { obs.stateUpdated(value) }
 
     private def executeBlockIn(sleep: Duration)(block: => Unit) {
-      ActorDSL.actor(new ActWithStash {
+      ActorDSL.actor(system)(new ActWithStash {
         context.setReceiveTimeout(sleep)
-        def receive = {
+        override def receive = {
           case ReceiveTimeout =>
             block
             context.stop(self)

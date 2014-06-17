@@ -18,7 +18,7 @@ package vcc.updater
 
 import java.io.File
 import java.net.URL
-import scala.actors.ActorRef
+import akka.actor.ActorRef
 import scala.concurrent.SyncVar
 
 object Downloader {
@@ -42,11 +42,11 @@ object Downloader {
 class Downloader(val url: URL, val destFile: File) extends Runnable {
 
   private val dThread = new Thread(this)
-  private var _peer: ActorRef = null
+  private var peer: ActorRef = null
   private val cancelTread = new SyncVar[Boolean]
 
   def start(peer: ActorRef) {
-    _peer = peer
+    this.peer = peer
     dThread.start()
   }
 
@@ -55,7 +55,7 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
     val MAX_BUFFER_SIZE = 1024
 
     // Tell my peer of my thread's actor
-    _peer ! Downloader.DownloadActor(cancelTread)
+    peer ! Downloader.DownloadActor(cancelTread)
 
     var file: java.io.RandomAccessFile = null
     var stream: java.io.InputStream = null
@@ -72,13 +72,13 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
 
       // Make sure response code is in the 200 range.
       if (connection.getResponseCode / 100 != 2) {
-        _peer ! Downloader.Failed("Unexpected response code: " + connection.getResponseCode)
+        peer ! Downloader.Failed("Unexpected response code: " + connection.getResponseCode)
       }
 
       // Check for valid content length.
       val contentLength = connection.getContentLength
       if (contentLength < 1) {
-        _peer ! Downloader.Failed("Bad length for request")
+        peer ! Downloader.Failed("Bad length for request")
       }
 
       /* Set the size for this download if it
@@ -114,20 +114,20 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
           val pct = ((downloaded.toDouble / size.toDouble) * 100).toInt
           if (lastReport < pct && downloaded != size) {
             lastReport = pct
-            _peer ! Downloader.Progress(downloaded, size)
+            peer ! Downloader.Progress(downloaded, size)
           }
         }
       }
       //Complete sent it out.
       if (downloaded == size) {
-        _peer ! Downloader.Progress(downloaded, size)
+        peer ! Downloader.Progress(downloaded, size)
         completed = true
       }
       else {
-        _peer ! Downloader.Cancel()
+        peer ! Downloader.Cancel()
       }
     } catch {
-      case e: Exception => _peer ! Downloader.Failed(e.getMessage)
+      case e: Exception => peer ! Downloader.Failed(e.getMessage)
     }
 
     // Close file.
@@ -136,7 +136,7 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
         file.close()
         if (!completed) destFile.delete() //Remove incomplete file
       } catch {
-        case e: Exception => _peer ! Downloader.Failed(e.getMessage)
+        case e: Exception => peer ! Downloader.Failed(e.getMessage)
       }
     }
 
@@ -145,7 +145,7 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
       try {
         stream.close()
       } catch {
-        case e: Exception => {}
+        case e: Exception =>
       }
     }
   }

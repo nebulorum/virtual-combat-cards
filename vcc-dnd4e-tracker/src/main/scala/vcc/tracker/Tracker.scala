@@ -16,10 +16,8 @@
  */
 package vcc.tracker
 
-import scala.actors.{ActorRef, IScheduler}
+import akka.actor._
 import vcc.tracker.Tracker.{Controller, Observer}
-import scala.actors.scheduler.DaemonScheduler
-import scala.actors.migration.{ActorDSL, ActWithStash}
 
 object Tracker {
 
@@ -57,17 +55,16 @@ class Tracker[S](controller: Controller[S]) {
 
   private case class Initialize(state: S)
 
-  private val observerRelay: ActorRef = ActorDSL.actor(new ObserverActor())
-  private val tracker: ActorRef = ActorDSL.actor(new TrackerActor(controller))
+  private val system = ActorSystem("migration-system")
+  private val observerRelay: ActorRef = system.actorOf(Props(new ObserverActor))
+  private val tracker: ActorRef = system.actorOf(TrackerActor.props(controller))
 
   private[tracker] def notifyObservers(newState: S) {
     observerRelay ! NotifyObserver(newState)
   }
 
-  private class ObserverActor extends ActWithStash {
+  private class ObserverActor extends Actor {
     private var observers: List[Observer[S]] = Nil
-
-    override def scheduler: IScheduler = DaemonScheduler
 
     def receive = {
       case AddObserver(observer) => registerObserver(observer)
@@ -92,8 +89,11 @@ class Tracker[S](controller: Controller[S]) {
     }
   }
 
-  private class TrackerActor(controller: Controller[S]) extends ActWithStash {
-    override def scheduler: IScheduler = DaemonScheduler
+  private object TrackerActor {
+    def props(controller: Controller[S]) = Props(new TrackerActor(controller))
+  }
+
+  private class TrackerActor(controller: Controller[S]) extends Actor {
 
     def receive = {
       case Redo => notifyObserversIfStateDefined(controller.redo())
