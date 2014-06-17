@@ -17,16 +17,18 @@
 package vcc.updater
 
 import java.net.URL
-import scala.actors.{TIMEOUT, Actor}
 import org.junit.{Assert, Test, Ignore}
 import scala.actors.migration.{ActWithStash, ActorDSL}
 import java.io.File
 import scala.concurrent.duration._
+import scala.concurrent.SyncVar
+import scala.actors.threadpool.TimeoutException
+import scala.language.postfixOps
 
 class DownloaderTest {
 
   //TODO This must be replace by proper Akka testing
-  def peerActor(parent: Actor, f: PartialFunction[Any, Boolean]) = ActorDSL.actor(new ActWithStash {
+  private def peerActor(parent: SyncVar[Option[Throwable]], f: PartialFunction[Any, Boolean]) = ActorDSL.actor(new ActWithStash {
 
     var running = true
     var trouble: Exception = null
@@ -37,28 +39,28 @@ class DownloaderTest {
 
     def receive = {
       case ReceiveTimeout =>
-        parent ! TIMEOUT
+        parent.put(Some(new TimeoutException()))
       case msg if f.isDefinedAt(msg) =>
         try {
           running = f(msg)
-          if(!running) {
-            parent ! 'DONE
+          if (!running) {
+            parent.put(None)
             context.stop(self)
           }
         } catch {
-          case e:Exception =>
-            parent ! e
+          case e: Exception =>
+            parent.put(Some(e))
             context.stop(self)
         }
     }
   })
 
-  private val testActorBehaviour: PartialFunction[Any, Unit] = {
-    case 'DONE => Assert.assertTrue(true)
-    case e: Exception => Assert.fail("Failed with exception" + e)
+  private val testActorBehaviour: PartialFunction[Option[Throwable], Unit] = {
+    case None => Assert.assertTrue(true)
+    case Some(e) => Assert.fail("Failed with exception" + e)
   }
 
-  def executeIfForReal(block: => Unit) {
+  private def executeIfForReal(block: => Unit) {
     if (System.getProperty("vcc.test.download") != null || true)
       block
     else
@@ -68,23 +70,20 @@ class DownloaderTest {
   @Test
   def testDownloadBadURL() {
     executeIfForReal {
+      val barrier = new SyncVar[Option[Throwable]]
       val file = File.createTempFile("vcc", ".zip")
       val down = new Downloader(new URL("http://127.0.0.1/a.zip"), file)
-      down.start(peerActor(Actor.self, {
+      down.start(peerActor(barrier, {
         case Downloader.Failed(msg) =>
           false // End run correctly
         case Downloader.DownloadActor(actor) =>
           true
-        case TIMEOUT =>
-          throw new Exception("Timeout, should not get here")
-          false
         case s =>
           println("Got :: " + s)
           throw new Exception("This should not be reached")
           false
       }))
-
-      Actor.receive(testActorBehaviour)
+      testActorBehaviour(barrier.get)
       file.delete()
     }
   }
@@ -92,12 +91,10 @@ class DownloaderTest {
   @Test
   def testDownloadingXML() {
     executeIfForReal {
+      val barrier = new SyncVar[Option[Throwable]]
       val file = File.createTempFile("vcc", ".xml")
       val downloader = new Downloader(new URL("http://www.exnebula.org/files/release-history/vcc/vcc-all.xml"), file)
-      downloader.start(peerActor(Actor.self, {
-        case scala.actors.TIMEOUT =>
-          throw new Exception("Timeout, should not get here")
-          false
+      downloader.start(peerActor(barrier, {
         case Downloader.Failed(msg) =>
           throw new Exception("Got a message: " + msg)
           false
@@ -113,7 +110,7 @@ class DownloaderTest {
           println("Got : " + s)
           throw new Exception("This should not be reached" + s)
       }))
-      Actor.receive(testActorBehaviour)
+      testActorBehaviour(barrier.get)
       if (file.exists()) file.delete()
     }
   }
@@ -121,12 +118,10 @@ class DownloaderTest {
   @Ignore()
   def testWithActualZipFile() {
     executeIfForReal {
+      val barrier = new SyncVar[Option[Throwable]]
       val file = File.createTempFile("vcc", ".zip")
       val downloader = new Downloader(new URL("http://www.exnebula.org/files/vcc/vcc-0.10.zip"), file)
-      downloader.start(peerActor(Actor.self, {
-        case scala.actors.TIMEOUT =>
-          throw new Exception("Timeout, should not get here")
-          false
+      downloader.start(peerActor(barrier, {
         case Downloader.Failed(msg) =>
           throw new Exception("Got a message " + msg)
           false
@@ -142,7 +137,7 @@ class DownloaderTest {
           println("Got : " + s)
           throw new Exception("This should not be reached" + s)
       }))
-      Actor.receive(testActorBehaviour)
+      testActorBehaviour(barrier.get)
       if (file.exists()) file.delete()
     }
   }
@@ -150,20 +145,18 @@ class DownloaderTest {
   @Test
   def testCancelMidDownload() {
     executeIfForReal {
+      val barrier = new SyncVar[Option[Throwable]]
       val file = File.createTempFile("vcc", ".xml")
       val downloader = new Downloader(new URL("http://www.exnebula.org/files/release-history/vcc/vcc-all.xml"), file)
 
-      downloader.start(peerActor(Actor.self, {
-        case scala.actors.TIMEOUT =>
-          throw new Exception("Timeout, should not get here")
-          false
+      downloader.start(peerActor(barrier, {
         case Downloader.Failed(msg) =>
           throw new Exception("Got a message " + msg)
           false
         case Downloader.DownloadActor(actor) =>
           val dActor = actor
           Thread.sleep(50)
-          dActor ! Downloader.Cancel()
+         dActor.put(true)
           true
         case Downloader.Progress(down, total) if down == total =>
           throw new Exception("Should have cancelled")
@@ -177,9 +170,8 @@ class DownloaderTest {
           println("Got : " + s)
           throw new Exception("This should not be reached" + s)
       }))
-      Actor.receive(testActorBehaviour)
+      testActorBehaviour(barrier.get)
       if (file.exists()) file.delete()
     }
   }
-
 }

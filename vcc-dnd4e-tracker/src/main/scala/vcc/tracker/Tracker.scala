@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  */
 package vcc.tracker
 
-import scala.actors.{ActorRef, IScheduler, DaemonActor, Actor}
+import scala.actors.{ActorRef, IScheduler}
 import vcc.tracker.Tracker.{Controller, Observer}
 import scala.actors.scheduler.DaemonScheduler
 import scala.actors.migration.{ActorDSL, ActWithStash}

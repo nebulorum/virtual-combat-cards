@@ -18,11 +18,12 @@ package vcc.updater
 
 import java.io.File
 import java.net.URL
-import scala.actors.{ActorRef, TIMEOUT, Actor}
+import scala.actors.ActorRef
+import scala.concurrent.SyncVar
 
 object Downloader {
 
-  case class DownloadActor(actor: Actor)
+  case class DownloadActor(actor: SyncVar[Boolean])
 
   case class Progress(progress: Int, total: Int)
 
@@ -42,6 +43,7 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
 
   private val dThread = new Thread(this)
   private var _peer: ActorRef = null
+  private val cancelTread = new SyncVar[Boolean]
 
   def start(peer: ActorRef) {
     _peer = peer
@@ -53,7 +55,7 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
     val MAX_BUFFER_SIZE = 1024
 
     // Tell my peer of my thread's actor
-    _peer ! Downloader.DownloadActor(Actor.self)
+    _peer ! Downloader.DownloadActor(cancelTread)
 
     var file: java.io.RandomAccessFile = null
     var stream: java.io.InputStream = null
@@ -95,10 +97,8 @@ class Downloader(val url: URL, val destFile: File) extends Runnable {
            file is left to download. */
         val buffer = new Array[Byte](math.min(size - downloaded, MAX_BUFFER_SIZE))
 
-        Actor.receiveWithin(0) {
-          case Downloader.Cancel() => stop = true
-          case TIMEOUT =>
-        }
+        if(cancelTread.isSet)
+          stop = true
 
         // Read from server into buffer.
         val read = stream.read(buffer)

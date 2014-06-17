@@ -20,7 +20,6 @@ import scala.swing._
 import scala.swing.event._
 import java.net.URL
 import java.io.File
-import scala.actors.Actor
 import vcc.util.swing.MigPanel
 import vcc.util.swing.multipanel.AbstractPanel
 import scala.actors.migration.{ActWithStash, ActorDSL}
@@ -35,7 +34,7 @@ class DownloadPanel(url:URL, targetFile:File) extends MigPanel("") with Abstract
   private val cancelButton=new Button("Cancel")
   private val kbytesCount= new Label("0/0")
 
-  private var dActor: Actor = null
+  private var dActor: SyncVar[Boolean] = null
   add(progress,"wrap,align center")
   add(kbytesCount,"wrap,align center")
   add(cancelButton,"wrap,align center")
@@ -74,7 +73,7 @@ class DownloadPanel(url:URL, targetFile:File) extends MigPanel("") with Abstract
 
   reactions += {
     case b:ButtonClicked =>
-      	dActor ! Downloader.Cancel()
+      	dActor.put(true)
   }
 
   //Only Start download when I have the actor set
