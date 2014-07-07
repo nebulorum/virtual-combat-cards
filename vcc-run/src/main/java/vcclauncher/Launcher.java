@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2012 tms - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 tms - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.Exception;
 import java.lang.String;
 import java.lang.System;
 import java.lang.reflect.Method;
@@ -54,7 +55,7 @@ public class Launcher {
     File baseDir = new File(baseDirName);
 
     _log = startLogger(new File(getLaunchLogPath()));
-    _log.info("Starting VCC Lancher 1.1.2");
+    _log.info("Starting VCC Lancher 1.1.3");
     _log.debug("----- System Properties -----");
     Enumeration<?> spe = System.getProperties().propertyNames();
     while (spe.hasMoreElements()) {
@@ -87,6 +88,12 @@ public class Launcher {
         throw new Exception("Failed to load library");
       }
       URLClassLoader ucl = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
+      try {
+        //For Akka configurations
+        Thread.currentThread().setContextClassLoader(ucl);
+      } catch (Exception e){
+        _log.error("Could not set Context classLoader: " + e.getMessage());
+      }
 
       Class<?> main = ucl.loadClass("vcc.Main");
       Method method = main.getMethod("main", String[].class);
