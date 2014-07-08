@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,8 +75,7 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
       new SourceEffectViewPanel(director),
       new SourceCombatantCommentPanel(director),
 
-      news,
-      new EffectEditorPanel(director, getNumberOfEditorPanel)
+      news
     )
   }
 

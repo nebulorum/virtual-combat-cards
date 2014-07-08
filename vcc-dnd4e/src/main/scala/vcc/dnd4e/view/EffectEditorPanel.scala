@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ import vcc.dnd4e.tracker.common._
 import vcc.infra.docking._
 import vcc.dnd4e.tracker.common.CombatantEntity
 import vcc.dnd4e.tracker.common.Command.AddEffect
-import scala.Some
 import vcc.infra.docking.DockID
 import vcc.dnd4e.tracker.common.CombatantRosterDefinition
 
@@ -147,7 +146,7 @@ with CombatStateObserver with ContextObserver with ScalaDockableComponent {
     }
   }
 
-  val dockID = DockID("effect-editor")
+  val dockID = DockID("effect-damage-old")
   val dockTitle = "Effect Creation"
   val dockFocusComponent = null
 }
