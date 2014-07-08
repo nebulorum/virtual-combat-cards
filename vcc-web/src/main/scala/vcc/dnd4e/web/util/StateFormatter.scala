@@ -16,9 +16,10 @@
  */
 package vcc.dnd4e.web.util
 
+import org.json4s.native.JsonMethods
 import vcc.dnd4e.tracker.common._
-import play.api.libs.json._
-import play.api.libs.json.Json.JsValueWrapper
+import org.json4s._
+import org.json4s.JsonDSL._
 
 class StateFormatter {
   def format(state: CombatState): String = {
@@ -39,7 +40,7 @@ class StateFormatter {
     yield formatCombatant(state, combatant)
 
   private def formatCombatant(state: CombatState, comb: UnifiedCombatant): String = {
-    val ms: Map[String, JsValueWrapper] = Seq(
+    val ms: Map[String, JValue] = Seq(
       makeField("id", if (comb.isInOrder) comb.orderId.toLabelString else comb.combId.id),
       makeField("name", comb.name),
       makeField("status", comb.health.formattedStatus),
@@ -47,15 +48,15 @@ class StateFormatter {
       makeOptionField("health", if (comb.isCharacter) Some(comb.health.formattedHitPoints) else None),
       makeOptionField("effects", makeEffects(state, comb.effects.effects))
     ).flatMap(x => x).toMap
-    Json.obj(ms.toSeq: _*).toString()
+    JsonMethods.compact(JsonMethods.render(ms.foldLeft(JObject())(_ ~ _)))
   }
 
-  private def makeEffects(state: CombatState, effects: List[Effect]): Option[JsValueWrapper] =
+  private def makeEffects(state: CombatState, effects: List[Effect]): Option[JValue] =
     seqToJsonArrayOption(
       for (effect <- effects if isPlayerVisible(state, effect))
       yield formatEffect(effect))
 
-  private def seqToJsonArrayOption(list: List[JsValueWrapper]):Option[JsValueWrapper] = if (list.isEmpty) None else Some(Json.arr(list: _*))
+  private def seqToJsonArrayOption(list: List[JValue]):Option[JValue] = if (list.isEmpty) None else Some(list)
 
   private def isPlayerVisible(state: CombatState, effect: Effect) =
     isCharacter(state, effect.source) || isCharacter(state, effect.effectId.combId)
@@ -63,12 +64,10 @@ class StateFormatter {
   private def isCharacter(state: CombatState, cid: CombatantID) =
     state.combatant(cid).combatantType == CombatantType.Character
 
-  private def formatEffect(effect: Effect):JsValueWrapper =
-    Json.obj(
-      "description" -> effect.condition.description,
-      "duration" -> effect.duration.shortDescription)
+  private def formatEffect(effect: Effect):JValue =
+    ("description" -> effect.condition.description) ~ ("duration" -> effect.duration.shortDescription)
 
-  private def makeField(key: String, value: JsValueWrapper) = Some((key, value))
+  private def makeField(key: String, value: JValue) = Some((key, value))
 
-  private def makeOptionField(key: String, value: Option[JsValueWrapper]) = value.map(value => (key, value))
+  private def makeOptionField(key: String, value: Option[JValue]) = value.map(value => (key, value))
 }

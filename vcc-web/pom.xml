@@ -27,9 +27,19 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.typesafe.play</groupId>
-            <artifactId>play-json_${scala.versionShort}</artifactId>
-            <version>2.3.0</version>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-native_${scala.versionShort}</artifactId>
+            <version>3.2.9</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.thoughtworks.paranamer</groupId>
+                    <artifactId>paranamer</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.scala-lang</groupId>
+                    <artifactId>scalap</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
@@ -54,10 +64,11 @@
         </resources>
         <plugins>
             <plugin>
-              <artifactId>maven-surefire-plugin</artifactId>
-              <configuration>
-                <jvm>${env.JAVA_HOME_7}/bin/java</jvm>
-              </configuration>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.10</version>
+                <configuration>
+                    <jvm>${env.JAVA_HOME_7}/bin/java</jvm>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-war-plugin</artifactId>
