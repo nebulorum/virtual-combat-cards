@@ -8,7 +8,7 @@
     </formats>
     <fileSets>
         <fileSet>
-            <directory>../vcc-dnd4e/scripts</directory>
+            <directory>src/main/resources/scripts</directory>
             <lineEnding>keep</lineEnding>
             <outputDirectory>.</outputDirectory>
             <fileMode>0755</fileMode>
