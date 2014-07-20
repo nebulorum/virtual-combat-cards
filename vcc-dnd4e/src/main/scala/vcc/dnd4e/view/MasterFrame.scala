@@ -22,7 +22,6 @@ import vcc.infra.docking._
 import vcc.util.swing.{SwingHelper, KeystrokeContainer}
 import vcc.updater.UpdateManager
 import UpdateManager.Version
-import java.awt.Toolkit
 import java.io.File
 import java.net.URL
 import vcc.dnd4e.tracker.common.CombatState
@@ -79,19 +78,6 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
     )
   }
 
-  private def getNumberOfEditorPanel: Int = {
-    def getMaximumNumberOfPanels: Int = try {
-      System.getProperty("vcc.view.efp.max").toInt
-    } catch {
-      case _: Throwable => 3
-    }
-
-    if (Toolkit.getDefaultToolkit.getScreenSize.getHeight > 700)
-      getMaximumNumberOfPanels
-    else
-      2
-  }
-
   private def adjustPreferredSize() {
     preferredSize = {
       val toolkit = java.awt.Toolkit.getDefaultToolkit
@@ -116,23 +102,28 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   }
 
   private def registerPanelsWithPanelDirector() {
-    for (dock <- docks) {
-      if (dock.isInstanceOf[ContextObserver]) director.registerContextObserver(dock.asInstanceOf[ContextObserver])
-      if (dock.isInstanceOf[CombatStateObserver]) director.registerStateObserver(dock.asInstanceOf[CombatStateObserver])
-    }
+    docks.collect { case co: ContextObserver => co}.foreach(director.registerContextObserver(_))
+    docks.collect { case cso: CombatStateObserver => cso}.foreach(director.registerStateObserver(_))
   }
 
   private def registerDockableKeyStroke() {
     SwingHelper.invokeLater {
-      for (dock <- docks)
-        if (dock.isInstanceOf[KeystrokeContainer]) dock.asInstanceOf[KeystrokeContainer].registerKeystroke()
+      docks.collect { case ks: KeystrokeContainer => ks}.foreach(_.registerKeystroke())
     }
+  }
+
+  private def createTopBar() = {
+    val toolBar = new ToolBar(director)
+    director.registerStateObserver(toolBar)
+    director.registerContextObserver(toolBar)
+    toolBar
   }
 
   private def initializeAndDecorateFrame() {
     menuBar = mainMenu
     iconImage = IconLibrary.MetalD20.getImage
     contents = new BorderPanel {
+      add(createTopBar(), BorderPanel.Position.North)
       peer.add(docker.setup(null), java.awt.BorderLayout.CENTER)
       add(statusBar, BorderPanel.Position.South)
       background = java.awt.Color.BLUE
