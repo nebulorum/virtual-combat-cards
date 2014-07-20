@@ -263,7 +263,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testCondition_shouldHaveAutoComplete() {
-    if(!System.getProperty("awt.toolkit", "").contains("XToolkit")) {
+    if(System.getenv("BUILD_NAME") == null) {
       getConditionField.pressKey(Key.S)
       getConditionField.pressKey(Key.L)
       getConditionField.pressKey(Key.ENTER)
