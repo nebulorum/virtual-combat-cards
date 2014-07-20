@@ -263,14 +263,16 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testCondition_shouldHaveAutoComplete() {
-    getConditionField.pressKey(Key.S)
-    getConditionField.pressKey(Key.L)
-    getConditionField.pressKey(Key.ENTER)
-    assertThat(getConditionField.textContains("slowed"))
-    getConditionField.pressKey(Key.A)
-    getConditionField.pressKey(Key.N)
-    getConditionField.pressKey(Key.ENTER)
-    assertThat(getConditionField.textContains("slowed and"))
+    if(!System.getProperty("awt.toolkit", "").contains("XToolkit")) {
+      getConditionField.pressKey(Key.S)
+      getConditionField.pressKey(Key.L)
+      getConditionField.pressKey(Key.ENTER)
+      assertThat(getConditionField.textContains("slowed"))
+      getConditionField.pressKey(Key.A)
+      getConditionField.pressKey(Key.N)
+      getConditionField.pressKey(Key.ENTER)
+      assertThat(getConditionField.textContains("slowed and"))
+    }
   }
 
   def testSelectMarkCheck_shouldEnabledPermanent() {
