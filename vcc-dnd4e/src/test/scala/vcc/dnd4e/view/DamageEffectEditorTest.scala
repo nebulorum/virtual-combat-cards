@@ -224,7 +224,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testClickOnMaxDamageButton_should() {
-    val diceSize = Seq(4,6,8, 10, 12, 20)
+    val diceSize = Seq(4, 6, 8, 10, 12, 20)
     repeat(10) {
       val dice = pickEntry(diceSize)
       val n = DiceBag.D(5)
@@ -263,16 +263,14 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
   }
 
   def testCondition_shouldHaveAutoComplete() {
-    if(System.getenv("BUILD_NAME") == null) {
-      getConditionField.pressKey(Key.S)
-      getConditionField.pressKey(Key.L)
-      getConditionField.pressKey(Key.ENTER)
-      assertThat(getConditionField.textContains("slowed"))
-      getConditionField.pressKey(Key.A)
-      getConditionField.pressKey(Key.N)
-      getConditionField.pressKey(Key.ENTER)
-      assertThat(getConditionField.textContains("slowed and"))
-    }
+    getConditionField.pressKey(Key.S)
+    getConditionField.pressKey(Key.L)
+    getConditionField.pressKey(Key.ENTER)
+    assertThat(getConditionField.textContains("slowed"))
+    getConditionField.pressKey(Key.A)
+    getConditionField.pressKey(Key.N)
+    getConditionField.pressKey(Key.ENTER)
+    assertThat(getConditionField.textContains("slowed and"))
   }
 
   def testSelectMarkCheck_shouldEnabledPermanent() {
@@ -505,7 +503,7 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
   private def blockIsTrue(block: => Boolean) = new Assertion {
     override def check() = {
-      if(!block)
+      if (!block)
         throw new RuntimeException("Expected true value")
     }
   }
@@ -544,4 +542,5 @@ class DamageEffectEditorTest extends DamageEffectEditorCommon with DamageEffectE
 
     def getLastValue = lastValue
   }
+
 }
