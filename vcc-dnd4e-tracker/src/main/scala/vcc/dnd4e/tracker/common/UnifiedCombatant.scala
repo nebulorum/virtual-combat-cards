@@ -34,6 +34,8 @@ sealed trait UnifiedCombatantID {
 
   def isInOrder: Boolean
 
+  def toLabelString: String
+
   override def toString = s"UnifiedCombatantID($combId, $orderId)"
 }
 
@@ -41,12 +43,16 @@ case class UnifiedInOrderCombatantID(orderId:InitiativeOrderID) extends UnifiedC
   def combId: CombatantID = orderId.combId
 
   val isInOrder = true
+
+  def toLabelString = orderId.toLabelString
 }
 
 case class UnifiedNotInOrderCombatantId(combId: CombatantID) extends UnifiedCombatantID {
   def orderId: InitiativeOrderID = null
 
   val isInOrder = false
+
+  def toLabelString = combId.id
 }
 
 object UnifiedCombatantID {

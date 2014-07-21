@@ -19,17 +19,19 @@ package vcc.dnd4e.view
 import vcc.dnd4e.tracker.common.Command.ExecuteInitiativeAction
 
 import scala.swing.{Label, Action, Button}
-import vcc.dnd4e.tracker.common.{UnifiedCombatantID, InitiativeAction, CombatState, UnifiedSequenceTable}
+import vcc.dnd4e.tracker.common._
 import vcc.util.swing.MigPanel
 
-class ToolBar(director: PanelDirector) extends MigPanel("flowx, ins 2", "[]rel[]100[][][]unrel[]unrel[]", "[]")
+class ToolBar(director: PanelDirector) extends MigPanel("flowx, ins 2", "[]rel[]100[][][]unrel[]push[]", "[]")
 with CombatStateObserver with ContextObserver {
 
   private var state = new UnifiedSequenceTable(Array(), CombatState.empty)
+  private var targetId: Option[UnifiedCombatantID] = None
 
   private val nextButton = createButton("toolbar.next", makeFirstAction("Next turn", InitiativeAction.EndRound))
   private val delayButton = createButton("toolbar.delay", makeFirstAction("Delay turn", InitiativeAction.DelayAction))
   private val readyButton = createButton("toolbar.ready", makeFirstAction("Ready action", InitiativeAction.ReadyAction))
+  private val executeButton = createButton("toolbar.executeReady", makeTargetAction("Execute action", InitiativeAction.ExecuteReady))
   private val activeCombo = makeSourceCombo()
 
   add(new Label("Acting:"))
@@ -37,6 +39,7 @@ with CombatStateObserver with ContextObserver {
   add(nextButton)
   add(delayButton)
   add(readyButton)
+  add(executeButton)
 
   private def makeSourceCombo() = {
     val combo = new SourceCombatantCombo(director)
@@ -51,6 +54,8 @@ with CombatStateObserver with ContextObserver {
   }
 
   override def changeTargetContext(newContext: Option[UnifiedCombatantID]) {
+    targetId = newContext
+    adjustControls()
   }
 
   override def changeSourceContext(newContext: Option[UnifiedCombatantID]) {
@@ -61,9 +66,16 @@ with CombatStateObserver with ContextObserver {
     nextButton.enabled = state.orderFirst.isDefined
 
     val orderId = state.orderFirstId.map(_.orderId.toLabelString)
-    adjustButton(delayButton, orderId, x => s"Delay [$x] turn", "Delay turn")
-    adjustButton(readyButton, orderId, x => s"Ready [$x] action", "Ready action")
+    val target = targetId.map(_.toLabelString)
+    adjustButton(delayButton, orderId, x => s"[$x] Delay turn", "Delay turn")
+    adjustButton(readyButton, orderId, x => s"[$x] Ready action", "Ready action")
+    adjustTargetButton(executeButton, target,
+      enabled = isInOrderAndReady(targetId),
+      x => s"[$x] Execute ready ", "Execute ready")
   }
+
+  private def isInOrderAndReady(id: Option[UnifiedCombatantID]) =
+    state.combatantOption(id).exists(c => c.isInOrder && c.initiative.state == InitiativeState.Ready)
 
   private def adjustButton(button: Button, key: Option[String], definedFormatter: String => String, default: String) {
     if (key.isDefined) {
@@ -75,6 +87,15 @@ with CombatStateObserver with ContextObserver {
     }
   }
 
+  private def adjustTargetButton(button: Button, key: Option[String], enabled: Boolean, definedFormatter: String => String, default: String) {
+    if (key.isDefined) {
+      button.text = definedFormatter(key.get)
+    } else {
+      button.text = default
+    }
+    button.enabled = enabled
+  }
+
   private def createButton(name: String, action: Action) = {
     val button = new Button(action)
     button.name = name
@@ -84,6 +105,11 @@ with CombatStateObserver with ContextObserver {
   private def makeFirstAction(text: String, action: InitiativeAction.Value) =
     Action(text) {
       director.requestAction(ExecuteInitiativeAction(state.orderFirstId.get.orderId, action))
+    }
+
+  private def makeTargetAction(text: String, action: InitiativeAction.Value) =
+    Action(text) {
+      director.requestAction(ExecuteInitiativeAction(targetId.get.orderId, action))
     }
 
 }

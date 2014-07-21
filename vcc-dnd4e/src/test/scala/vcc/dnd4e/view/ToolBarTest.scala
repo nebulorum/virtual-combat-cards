@@ -17,13 +17,13 @@
 package vcc.dnd4e.view
 
 import org.mockito.Mockito._
+import org.uispec4j.{Button, UISpecAdapter, UISpecTestCase, Window}
+import vcc.dnd4e.tracker.command._
 import vcc.dnd4e.tracker.common.Command.ExecuteInitiativeAction
-import vcc.dnd4e.tracker.common.{InitiativeAction, CombatState, UnifiedSequenceTable, CombatStateBuilder}
+import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.tracker.event.StartCombatEvent
 
 import scala.swing.Frame
-
-import org.uispec4j.{Button, Window, UISpecAdapter, UISpecTestCase}
 
 class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
 
@@ -101,7 +101,7 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
   def testDelay_CombatStarted_delayEnabledAndAdjusted() {
     loadRoster(combatStartedState)
 
-    assertButtonActiveWithText(getDelayButton, "Delay [Aº] turn")
+    assertButtonActiveWithText(getDelayButton, "[Aº] Delay turn")
   }
 
   def testDelay_RosterLoad_delayDisabled() {
@@ -127,7 +127,7 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
   def testReady_CombatStarted_readyEnabledAndAdjusted() {
     loadRoster(combatStartedState)
 
-    assertButtonActiveWithText(getReadyButton, "Ready [Aº] action")
+    assertButtonActiveWithText(getReadyButton, "[Aº] Ready action")
   }
 
   def testReady_RosterLoad_readyDisabled() {
@@ -150,11 +150,51 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
     verify(director).requestAction(ExecuteInitiativeAction(combatStartedState.nextUp.get, InitiativeAction.ReadyAction))
   }
 
+  def testExecuteReady_noTarget_doesNotEnableButton() {
+    loadRoster(readiedCombatant)
+
+    view.changeTargetContext(None)
+
+    assertButtonDisabledWithText(getExecuteButton, "Execute ready")
+  }
+
+  def testExecuteReady_selectNotReady_doesNotEnableButton() {
+    loadRoster(readiedCombatant)
+    view.changeTargetContext(pickCombatant(readiedCombatant, 1))
+
+    assertButtonDisabledWithText(getExecuteButton, "[2º] Execute ready")
+  }
+
+  def testExecuteReady_selectNotInOrder_doesNotEnableButton() {
+    loadRoster(readiedCombatant)
+    view.changeTargetContext(pickCombatant(readiedCombatant, 3))
+
+    assertButtonDisabledWithText(getExecuteButton, "[3] Execute ready")
+  }
+
+  def testExecuteReady_selectReady_enableButton() {
+    loadRoster(readiedCombatant)
+    view.changeTargetContext(pickCombatant(readiedCombatant, 2))
+
+    assertButtonActiveWithText(getExecuteButton, "[Aº] Execute ready")
+  }
+
+  def testExecuteReady_selectReadyAndClick_triggersEvent() {
+    loadRoster(readiedCombatant)
+    view.changeTargetContext(pickCombatant(readiedCombatant, 2))
+
+    getExecuteButton.click()
+
+    verify(director).requestAction(ExecuteInitiativeAction(ioiA, InitiativeAction.ExecuteReady))
+  }
+
   private def getDelayButton = getMainWindow.getButton("toolbar.delay")
 
   private def getNextButton = getMainWindow.getButton("toolbar.next")
 
   private def getReadyButton = getMainWindow.getButton("toolbar.ready")
+
+  private def getExecuteButton = getMainWindow.getButton("toolbar.executeReady")
 
   private def getSourceCombo = getMainWindow.getComboBox("toolbar.activeCombo")
 
@@ -164,8 +204,8 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
   }
 
   private def assertButtonDisabledWithText(button: Button, expectedText: String) {
-    assertThat(not(button.isEnabled))
     assertThat(button.textEquals(expectedText))
+    assertThat("Button should be disabled", not(button.isEnabled))
   }
 
   private def pickCombatant(state: CombatState, index : Int) = {
@@ -184,7 +224,15 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
     addToOrder(combA, 15, 2),
     addToOrder(comb2, 5, 2))
 
+  private val ioiA = InitiativeOrderID(combA, 0)
+  private val ioi1 = InitiativeOrderID(comb1, 0)
   private val combatStartedState = buildState(initialState, StartCombatEvent)
+
+  private def buildFromCommands(state: CombatState, events: Seq[CombatStateCommand]) =
+    events.foldLeft(state)((s,cmd) => s.transitionWith(cmd.generateEvents(s)))
+
+  private val readiedCombatant = buildFromCommands(combatStartedState,
+    Seq(StartRoundCommand(ioiA), ReadyActionCommand(ioiA), EndRoundCommand(ioiA), StartRoundCommand(ioi1)))
 
   private def buildUnifiedState(state: CombatState) = builder.build(state)
 }
