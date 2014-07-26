@@ -17,9 +17,10 @@
 package vcc.dnd4e.view
 
 import org.mockito.Mockito._
+import org.uispec4j.interception.{WindowHandler, WindowInterceptor}
 import org.uispec4j.{Button, UISpecAdapter, UISpecTestCase, Window}
 import vcc.dnd4e.tracker.command._
-import vcc.dnd4e.tracker.common.Command.ExecuteInitiativeAction
+import vcc.dnd4e.tracker.common.Command.{ExecuteInitiativeAction, MoveBefore}
 import vcc.dnd4e.tracker.common._
 import vcc.dnd4e.tracker.event.StartCombatEvent
 
@@ -58,7 +59,7 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
 
   def testSource_FromOutside_shouldUpdateCombo() {
     loadRoster(combatStartedState)
-    view.changeSourceContext(pickCombatant(combatStartedState, 1))
+    view.changeSourceContext(pickCombatantId(combatStartedState, 1))
 
     assertThat(getSourceCombo.contains(combatantNames: _*))
     assertThat(getSourceCombo.selectionEquals(combatantNames(1)))
@@ -68,7 +69,7 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
     loadRoster(combatStartedState)
     getSourceCombo.select(combatantNames(2))
 
-    verify(director).setActiveCombatant(pickCombatant(combatStartedState, 2))
+    verify(director).setActiveCombatant(pickCombatantId(combatStartedState, 2))
   }
 
   def testNext_RosterLoad_nextNotEnabled() {
@@ -160,32 +161,107 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
 
   def testExecuteReady_selectNotReady_doesNotEnableButton() {
     loadRoster(readiedCombatant)
-    view.changeTargetContext(pickCombatant(readiedCombatant, 1))
+    view.changeTargetContext(pickCombatantId(readiedCombatant, 1))
 
     assertButtonDisabledWithText(getExecuteButton, "[2º] Execute ready")
   }
 
   def testExecuteReady_selectNotInOrder_doesNotEnableButton() {
     loadRoster(readiedCombatant)
-    view.changeTargetContext(pickCombatant(readiedCombatant, 3))
+    view.changeTargetContext(pickCombatantId(readiedCombatant, 3))
 
     assertButtonDisabledWithText(getExecuteButton, "[3] Execute ready")
   }
 
   def testExecuteReady_selectReady_enableButton() {
     loadRoster(readiedCombatant)
-    view.changeTargetContext(pickCombatant(readiedCombatant, 2))
+    view.changeTargetContext(pickCombatantId(readiedCombatant, 2))
 
     assertButtonActiveWithText(getExecuteButton, "[Aº] Execute ready")
   }
 
   def testExecuteReady_selectReadyAndClick_triggersEvent() {
     loadRoster(readiedCombatant)
-    view.changeTargetContext(pickCombatant(readiedCombatant, 2))
+    view.changeTargetContext(pickCombatantId(readiedCombatant, 2))
 
     getExecuteButton.click()
 
     verify(director).requestAction(ExecuteInitiativeAction(ioiA, InitiativeAction.ExecuteReady))
+  }
+
+  def testMoveBefore_RosterEmpty_notEnabled() {
+    assertButtonDisabledWithText(getMoveBeforeButton, "Move before ...")
+  }
+
+  def testMoveBefore_WithRosterNotInOrder_notEnabled() {
+    loadRoster(combatStartedState)
+    view.changeTargetContext(pickCombatantId(combatStartedState, 3))
+
+    assertButtonDisabledWithText(getMoveBeforeButton, "Move [3] before ...")
+  }
+
+  def testMoveBefore_WithRosterInOrder_enabled() {
+    loadRoster(combatStartedState)
+    view.changeTargetContext(pickCombatantId(combatStartedState, 1))
+
+    assertButtonActiveWithText(getMoveBeforeButton, "Move [1º] before ...")
+  }
+
+  def testMoveBefore_WithRosterInOrderFirstSelected_disabled() {
+    loadRoster(combatStartedState)
+    view.changeTargetContext(pickCombatantId(combatStartedState, 0))
+
+    assertButtonDisabledWithText(getMoveBeforeButton, "Move [Aº] before ...")
+  }
+
+  def testMoveBefore_WithRosterButCombatNotStarted_disabled() {
+    loadRoster(initialState)
+
+    view.changeTargetContext(pickCombatantId(initialState, 0))
+    assertButtonDisabledWithText(getMoveBeforeButton, "Move [Aº] before ...")
+
+    view.changeTargetContext(pickCombatantId(initialState, 2))
+    assertButtonDisabledWithText(getMoveBeforeButton, "Move [2º] before ...")
+  }
+
+  def testMoveBefore_withValidTarget_clickShowsCorrectDialog() {
+    val expectedElements = Seq("Aº - Fighter", "2º - Goblin")
+    val combatant = pickCombatantId(combatStartedState, 1)
+
+    loadRoster(combatStartedState)
+    view.changeTargetContext(combatant)
+
+    assertMoveDialogAppearedCorrectly(combatant.get.orderId, None, expectedElements)
+    verifyNoMoreInteractions(director)
+  }
+
+  def testMoveBefore_withValidTarget_clickShowsCorrectDialogAndDispatchesAction() {
+    val expectedElements = Seq("Aº - Fighter", "1º - Goblin")
+    val combatant = pickCombatantId(combatStartedState, 2)
+    val moveBefore = pickCombatant(combatStartedState, 1)
+
+    loadRoster(combatStartedState)
+    view.changeTargetContext(combatant)
+
+    assertMoveDialogAppearedCorrectly(combatant.get.orderId, moveBefore, expectedElements)
+    verify(director).requestAction(MoveBefore(combatant.get.orderId, moveBefore.get.orderId))
+  }
+
+  def assertMoveDialogAppearedCorrectly(sourceId: InitiativeOrderID, selection: Option[UnifiedCombatant], expectedElements: Seq[String]) {
+    def formattedName(combatant: UnifiedCombatant) =  s"${combatant.orderId.toLabelString} - ${combatant.name}"
+
+    WindowInterceptor.
+      init(getMoveBeforeButton.triggerClick()).
+      process(new WindowHandler() {
+      def process(window: Window) = {
+        assertThat(window.titleEquals(s"Move [${sourceId.toLabelString}] before ..."))
+        assertThat(window.getComboBox("moveBefore.options").contentEquals(expectedElements: _*))
+        if(selection.isDefined) {
+          window.getComboBox("moveBefore.option").select(formattedName(selection.get))
+        }
+        window.getButton(selection.map(_ => "OK").getOrElse("Cancel")).triggerClick()
+      }
+    }).run()
   }
 
   private def getDelayButton = getMainWindow.getButton("toolbar.delay")
@@ -193,6 +269,8 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
   private def getNextButton = getMainWindow.getButton("toolbar.next")
 
   private def getReadyButton = getMainWindow.getButton("toolbar.ready")
+
+  private def getMoveBeforeButton = getMainWindow.getButton("toolbar.moveBefore")
 
   private def getExecuteButton = getMainWindow.getButton("toolbar.executeReady")
 
@@ -208,9 +286,11 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
     assertThat("Button should be disabled", not(button.isEnabled))
   }
 
-  private def pickCombatant(state: CombatState, index : Int) = {
+  private def pickCombatantId(state: CombatState, index: Int) = pickCombatant(state, index).map(_.unifiedId)
+
+  private def pickCombatant(state: CombatState, index: Int) = {
     val us = buildUnifiedState(state)
-    Some(us.elements(index).unifiedId)
+    Some(us.elements(index))
   }
 
   private val builder = new UnifiedSequenceTable.Builder
@@ -226,13 +306,13 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
 
   private val ioiA = InitiativeOrderID(combA, 0)
   private val ioi1 = InitiativeOrderID(comb1, 0)
-  private val combatStartedState = buildState(initialState, StartCombatEvent)
+  private val combatStartedState = buildFromCommands(buildState(initialState, StartCombatEvent), StartRoundCommand(ioiA))
 
-  private def buildFromCommands(state: CombatState, events: Seq[CombatStateCommand]) =
-    events.foldLeft(state)((s,cmd) => s.transitionWith(cmd.generateEvents(s)))
+  private def buildFromCommands(state: CombatState, events: CombatStateCommand*) =
+    events.foldLeft(state)((s, cmd) => s.transitionWith(cmd.generateEvents(s)))
 
   private val readiedCombatant = buildFromCommands(combatStartedState,
-    Seq(StartRoundCommand(ioiA), ReadyActionCommand(ioiA), EndRoundCommand(ioiA), StartRoundCommand(ioi1)))
+    ReadyActionCommand(ioiA), EndRoundCommand(ioiA), StartRoundCommand(ioi1))
 
   private def buildUnifiedState(state: CombatState) = builder.build(state)
 }
