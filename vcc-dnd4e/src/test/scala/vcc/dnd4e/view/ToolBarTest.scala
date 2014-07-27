@@ -76,6 +76,7 @@ class ToolBarTest extends UISpecTestCase with CombatStateBuilder {
     loadRoster(initialState)
 
     assertButtonDisabledWithText(getNextButton, "Next turn")
+    assertThat(getNextButton.tooltipContains("End round of the first combatant and start next (shortcut Alt-N)"))
   }
 
   def testNext_CombatStarted_nextEnabled() {

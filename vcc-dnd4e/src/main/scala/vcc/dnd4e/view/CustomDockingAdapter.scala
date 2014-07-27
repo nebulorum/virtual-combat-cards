@@ -48,9 +48,7 @@ class CustomDockingAdapter(layoutBaseDirectory: File) extends InfoNodeDockAdapte
     root.setWindow(new SplitWindow(true, 0.34f,
       new SplitWindow(false, 0.180f,
         vm.getView("damage"),
-        new SplitWindow(false, 0.2434f,
-          vm.getView("initiative"),
-          vm.getView("effect-editor"))),
+        vm.getView("effect-editor")),
       new SplitWindow(true, 0.607f,
         new SplitWindow(false, 0.75f,
           vm.getView("sequence"),
@@ -80,7 +78,7 @@ class CustomDockingAdapter(layoutBaseDirectory: File) extends InfoNodeDockAdapte
       try {
         restoreLayout(new java.io.FileInputStream(file))
       } catch {
-        case s: Exception=>
+        case s: Exception =>
           s.printStackTrace()
           Dialog.showMessage(owner, "Failed to load " + file + ".\nThe file may be corrupt or invalid. Try saving the layout once more.", "Failed to load Layout", Dialog.Message.Error, null)
       }

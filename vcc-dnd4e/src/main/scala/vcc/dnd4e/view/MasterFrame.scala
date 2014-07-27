@@ -44,6 +44,7 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   private val news = new NewsPanel(baseDirectory, releaseInformation)
   private val docks = createAllDockableComponents()
   private val mainMenu = new MainMenu(director, docker, this, configurationPanel, releaseInformation)
+  private val toolBar = createTopBar()
 
   adjustPreferredSize()
   registerPanelsWithPanelDirector()
@@ -61,7 +62,6 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   private def createAllDockableComponents(): List[DockableComponent] = {
     List[DockableComponent](
       new DamageCommandPanel(director),
-      new InitiativePanel(director),
       new EffectDamagePanel(director),
       new CombatCommentPanel(director),
       new SequenceTable(director),
@@ -90,8 +90,8 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   }
 
   private def registerDockableWithDockerAndRegisterKeyBinding() {
-    val defaultKeyMap: List[String] = List("F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "alt F6", "alt F7", "alt F8", null, null)
-    val macKeyMap: List[String] = List("meta 1", "meta 2", "meta 3", "meta 4", "meta 5", "meta 6", "meta 7", "meta 8", "alt meta 6", "alt meta 7", "alt meta 8", null, null)
+    val defaultKeyMap: List[String] = List("F1", "F3", "F4", "F5", "F6", "F7", "F8", "alt F6", "alt F7", "alt F8", null, null)
+    val macKeyMap: List[String] = List("meta 1", "meta 3", "meta 4", "meta 5", "meta 6", "meta 7", "meta 8", "alt meta 6", "alt meta 7", "alt meta 8", null, null)
     for ((dock, keystroke) <- docks.zip(if (Macify.isMac) macKeyMap else defaultKeyMap)) {
       docker.addDockable(dock)
       mainMenu.addToDockRestoreMenu(new MenuItem(new DockableRestoreAction(docker, dock.dockID, dock.dockTitle)))
@@ -109,6 +109,7 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
   private def registerDockableKeyStroke() {
     SwingHelper.invokeLater {
       docks.collect { case ks: KeystrokeContainer => ks}.foreach(_.registerKeystroke())
+      toolBar.registerKeystroke()
     }
   }
 
@@ -123,7 +124,7 @@ class MasterFrame(baseDirectory: File, releaseInformation: ReleaseInformation, c
     menuBar = mainMenu
     iconImage = IconLibrary.MetalD20.getImage
     contents = new BorderPanel {
-      add(createTopBar(), BorderPanel.Position.North)
+      add(toolBar, BorderPanel.Position.North)
       peer.add(docker.setup(null), java.awt.BorderLayout.CENTER)
       add(statusBar, BorderPanel.Position.South)
       background = java.awt.Color.BLUE

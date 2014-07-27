@@ -34,13 +34,13 @@ object ToolBar {
      * @return None when the dialog has been cancels, Some when a value has been returned.
      */
     protected def collectResult() =
-      if(dropBox.selection.item != null)
+      if (dropBox.selection.item != null)
         Some(dropBox.selection.item.orderId)
       else
         None
 
     private val dropBox = new ExplicitModelComboBox(new ContainerComboBoxModel(options))
-    dropBox.setFormatRenderer(new StringFormatListCellRenderer[UnifiedCombatant](uc =>  uc.orderId.toLabelString + " - " + uc.name))
+    dropBox.setFormatRenderer(new StringFormatListCellRenderer[UnifiedCombatant](uc => uc.orderId.toLabelString + " - " + uc.name))
     dropBox.name = "moveBefore.options"
 
     contents = new MigPanel("") {
@@ -50,20 +50,26 @@ object ToolBar {
       add(new Button(cancelAction))
     }
   }
+
 }
 
 class ToolBar(director: PanelDirector) extends MigPanel("flowx, ins 2", "[]rel[]100[][][]unrel[]push[]", "[]")
-with CombatStateObserver with ContextObserver {
+with CombatStateObserver with ContextObserver with KeystrokeContainer {
 
   private var state = new UnifiedSequenceTable(Array(), CombatState.empty)
   private var targetId: Option[UnifiedCombatantID] = None
   private val rules = new CombatStateRules()
 
-  private val nextButton = createButton("toolbar.next", makeFirstAction("Next turn", InitiativeAction.EndRound))
-  private val delayButton = createButton("toolbar.delay", makeFirstAction("Delay turn", InitiativeAction.DelayAction))
-  private val readyButton = createButton("toolbar.ready", makeFirstAction("Ready action", InitiativeAction.ReadyAction))
-  private val executeButton = createButton("toolbar.executeReady", makeTargetAction("Execute action", InitiativeAction.ExecuteReady))
-  private val moveBeforeButton = createButton("toolbar.moveBefore", makeMoveBeforeAction())
+  private val nextButton = createButton("toolbar.next", "End round of the first combatant and start next (shortcut Alt-N)",
+    makeFirstAction("Next turn", InitiativeAction.EndRound))
+  private val delayButton = createButton("toolbar.delay", "Delay the round of the first combatant",
+    makeFirstAction("Delay turn", InitiativeAction.DelayAction))
+  private val readyButton = createButton("toolbar.ready", "Ready an action for the first combatant",
+    makeFirstAction("Ready action", InitiativeAction.ReadyAction))
+  private val executeButton = createButton("toolbar.executeReady", "Execute readied action",
+    makeTargetAction("Execute action", InitiativeAction.ExecuteReady))
+  private val moveBeforeButton = createButton("toolbar.moveBefore", "Move select combatant to a position",
+    makeMoveBeforeAction())
   private val activeCombo = makeSourceCombo()
 
   add(new Label("Acting:"))
@@ -88,6 +94,11 @@ with CombatStateObserver with ContextObserver {
 
   override def changeSourceContext(newContext: Option[UnifiedCombatantID]) {
     activeCombo.changeSourceContext(newContext)
+  }
+
+  def registerKeystroke() {
+    KeystrokeBinder.bindKeystrokeAction(nextButton, bindToRootPane = true,
+      KeystrokeBinder.FocusCondition.WhenWindowFocused, "alt N", new ClickButtonAction("init.end", nextButton))
   }
 
   private def adjustControls() {
@@ -130,9 +141,10 @@ with CombatStateObserver with ContextObserver {
     button.enabled = enabled
   }
 
-  private def createButton(name: String, action: Action) = {
+  private def createButton(name: String, toolTip: String, action: Action) = {
     val button = new Button(action)
     button.name = name
+    button.tooltip = toolTip
     button
   }
 
