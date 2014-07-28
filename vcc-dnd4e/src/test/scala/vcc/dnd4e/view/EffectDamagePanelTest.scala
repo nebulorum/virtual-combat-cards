@@ -29,8 +29,6 @@ class EffectDamagePanelTest extends UISpecTestCase with CombatStateBuilder with 
 
   private val director = mock(classOf[PanelDirector])
 
-  private val combatantNames = Seq("Aº - Fighter", "1º - Goblin-mini", "2º - Goblin-mini", "3 - Goblin")
-
   private val mementoSword = Memento(Some("Sword"), Some("1d8 + 1"), None)
 
   private val mementoSlower = Memento(Some("Slower"), None,
@@ -48,23 +46,6 @@ class EffectDamagePanelTest extends UISpecTestCase with CombatStateBuilder with 
         new Window(frame.peer)
       }
     })
-  }
-
-  def testSourceComponentPresentAndEnabled() {
-    assertThat(getSourceCombo.isVisible)
-    assertThat(getSourceCombo.isEnabled)
-  }
-
-  def testSetSourceFromOutside_shouldUpdateCombo() {
-    setupState(0)
-    assertThat(getSourceCombo.contains(combatantNames: _*))
-    assertThat(getSourceCombo.selectionEquals(combatantNames(0)))
-  }
-
-  def testSelectingDifferentSource_updatesPanel() {
-    val uState = setupState()
-    getSourceCombo.select(combatantNames(2))
-    verify(director).setActiveCombatant(pickCombatant(uState, 2))
   }
 
   def testWithFighter_setEffectAndTarget() {
@@ -176,8 +157,6 @@ class EffectDamagePanelTest extends UISpecTestCase with CombatStateBuilder with 
 
   protected def pickDuration(durationDescription: String): DurationComboEntry =
     DurationComboEntry.durations.find(_.toString == durationDescription).get
-
-  private def getSourceCombo = getMainWindow.getComboBox("edp.source")
 
   private def getFormSaveButton = getMainWindow.getButton("form.save")
 

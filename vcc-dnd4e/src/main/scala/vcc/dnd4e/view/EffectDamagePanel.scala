@@ -20,13 +20,13 @@ import vcc.util.swing.{KeystrokeContainer, MigPanel}
 import vcc.infra.docking.{ScalaDockableComponent, DockID}
 import vcc.dnd4e.tracker.common.{CombatState, UnifiedCombatantID, UnifiedSequenceTable}
 import vcc.dnd4e.view.DamageEffectEditor.Memento
-import scala.swing.Label
+
+import scala.swing.Component
 
 class EffectDamagePanel(director: PanelDirector)
   extends MigPanel("ins 2 4 2 4", "[grow 100]", "[grow 0]10[grow 100]") with ScalaDockableComponent
   with KeystrokeContainer with ContextObserver with CombatStateObserver {
 
-  private val sourceCombo = makeSourceCombo()
   private val damageEffectEditor = new DamageEffectEditor(director)
   private val groupForm = new GroupFormPanel[Memento](damageEffectEditor, _.asListText)
 
@@ -37,13 +37,11 @@ class EffectDamagePanel(director: PanelDirector)
   init()
 
   private def init() {
-    add(new Label("Acting: "), "split 2, grow 0")
-    add(sourceCombo, "wrap, growx 100")
     add(groupForm, "growx 100, growy 100")
     groupForm.setHeaderLabels("Power", "Powers")
   }
 
-  override def dockFocusComponent = sourceCombo.peer
+  override def dockFocusComponent = null
 
   override def dockID = DockID("effect-editor")
 
@@ -51,18 +49,15 @@ class EffectDamagePanel(director: PanelDirector)
 
   override def combatStateChanged(newState: UnifiedSequenceTable) {
     state = newState
-    sourceCombo.combatStateChanged(newState)
   }
 
   override def changeSourceContext(newContext: Option[UnifiedCombatantID]) {
     swapCachedContent(newContext)
-    sourceCombo.changeSourceContext(newContext)
     currentSource = newContext
     damageEffectEditor.changeSourceContext(newContext)
   }
 
   override def changeTargetContext(newContext: Option[UnifiedCombatantID]) {
-    sourceCombo.changeTargetContext(newContext)
     damageEffectEditor.changeTargetContext(newContext)
   }
 
@@ -70,18 +65,12 @@ class EffectDamagePanel(director: PanelDirector)
      damageEffectEditor.registerKeystroke()
   }
 
-  private def makeSourceCombo() = {
-    val combo = new SourceCombatantCombo(director)
-    combo.name = "edp.source"
-    combo
-  }
-
   private def swapCachedContent(newContext: Option[UnifiedCombatantID]) {
     val oldEntityID = state.combatantOption(currentSource).map(_.definition.entity.eid)
     val newEntityID = state.combatantOption(newContext).map(_.definition.entity.eid)
     if (oldEntityID != newEntityID) {
       oldEntityID.foreach(mementoCache.update(_, groupForm.getContent))
-      newEntityID.foreach(eid => groupForm.setContent(mementoCache.get(eid).getOrElse(Seq())))
+      newEntityID.foreach(eid => groupForm.setContent(mementoCache.getOrElse(eid, Seq())))
     }
   }
 }
