@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,10 +31,13 @@ import swing.{Component, SequentialContainer, Panel}
 class CardPanel(hgap: Int, vgap: Int) extends Panel with SequentialContainer.Wrapper {
   override lazy val peer = new JPanel(new CardLayout(hgap, vgap))
   private val cardLayout = peer.getLayout.asInstanceOf[CardLayout]
+  private var activeCard: Option[String] = None
+  private var cards = Vector.empty[String]
+
   /**
    * Create CardLayout backed pane with 0 gap
    */
-  def this() = this (0, 0)
+  def this() = this(0, 0)
 
   /**
    * Add a component to a the CardLayout. The component must have a unique name.
@@ -43,6 +46,8 @@ class CardPanel(hgap: Int, vgap: Int) extends Panel with SequentialContainer.Wra
    */
   def addCard(component: Component, key: String) {
     peer.add(component.peer, key)
+    if (cards.isEmpty) activeCard = Some(key)
+    cards = cards :+ key
   }
 
   /**
@@ -51,6 +56,15 @@ class CardPanel(hgap: Int, vgap: Int) extends Panel with SequentialContainer.Wra
    * @param key String identifier for the component in the CardLayout.
    */
   def showCard(key: String) {
+    if(cards.contains(key))
+      activeCard = Some(key)
+    else
+      activeCard = Some(cards.head)
     cardLayout.show(peer, key)
   }
+
+  /**
+   * Card key of the currently visible card, is there is one
+   */
+  def displayingCard: Option[String] = activeCard
 }

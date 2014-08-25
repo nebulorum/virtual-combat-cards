@@ -72,7 +72,7 @@ with CombatStateObserver with ContextObserver with KeystrokeContainer {
     makeMoveBeforeAction())
   private val activeCombo = makeSourceCombo()
 
-  add(new Label("Acting:"))
+  add(new Label("Acting/Source:"))
   add(activeCombo)
   add(nextButton)
   add(delayButton)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2013 - Thomas Santana <tms@exnebula.org>
+ * Copyright (C) 2008-2014 - Thomas Santana <tms@exnebula.org>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,34 +24,42 @@ import org.uispec4j.assertion.Assertion
 
 class CardLayoutTest extends UISpecTestCase {
 
-  UISpec4J.init()
+  private val cardPanel = new CardPanel()
 
-  val cardPanel = new CardPanel()
-  List("one", "two", "three").foreach(label => cardPanel.addCard(new Button(label), label))
+  override def setUp() {
+    super.setUp()
+
+    List("one", "two", "three").foreach(label => cardPanel.addCard(new Button(label), label))
+    setAdapter(new SwingComponentWrapperAdapter(cardPanel))
+  }
+
+  def testAskCardWithNoAddedCards() {
+    val cardPanel = new CardPanel()
+    println(cardPanel.displayingCard)
+    assertTrue(assertion("No card showed")(cardPanel.displayingCard == None))
+  }
 
   def testShowFirstTab() {
-    setAdapter(new SwingComponentWrapperAdapter(cardPanel))
-
     assertTrue(assertion("Button one is visible")(buttonLabels() == List("one")))
+    assertTrue(cardPanel.isShowingCard("one"))
   }
 
   def testShowSecondTab() {
-    setAdapter(new SwingComponentWrapperAdapter(cardPanel))
     cardPanel.showCard("two")
     assertTrue(assertion("Button two is visible")(buttonLabels() == List("two")))
+    assertTrue(cardPanel.isShowingCard("two"))
   }
 
   def testShowThreeTab() {
-    setAdapter(new SwingComponentWrapperAdapter(cardPanel))
     cardPanel.showCard("three")
     assertTrue(assertion("Button three is visible")(buttonLabels() == List("three")))
+    assertTrue(cardPanel.isShowingCard("three"))
   }
 
-
   def testNoChangeOnMissingCard() {
-    setAdapter(new SwingComponentWrapperAdapter(cardPanel))
     cardPanel.showCard("not found")
     assertTrue(assertion("Button one is visible")(buttonLabels() == List("one")))
+    assertTrue(cardPanel.isShowingCard("one"))
   }
 
   def buttonLabels(): List[String] = {
@@ -65,4 +73,15 @@ class CardLayoutTest extends UISpecTestCase {
       }
     }
   }
+
+  private implicit class PimpedCardPanel(panel: CardPanel) {
+    def isShowingCard(expected: String) = new Assertion {
+      def check() = {
+        if(panel.displayingCard != Some(expected))
+            throw new AssertionError(s"Panel showing card ${panel.displayingCard} expected $expected")
+      }
+    }
+
+  }
+
 }
