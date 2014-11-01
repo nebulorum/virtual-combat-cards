@@ -1,11 +1,13 @@
 #!/bin/sh
 
-if [ $# -ne 1 ]; then 
-	echo "Usage:\n\t$0 <version-string>" 
+if [ $# -ne 2 ]; then
+	echo "Usage:\n\t$0 <version-string> <Signature identifier> "
 	exit 1
 fi
 
 VERSION=$1
+SIGNATURE=$2
+
 INSTALLZIP="target/vcc-$VERSION-release-full.zip" 
 if [ ! -f $INSTALLZIP  ]; then
     echo "Must run mvn package and generate $INSTALLZIP before running this command"
@@ -44,6 +46,20 @@ cp src/main/macos/Resources/* "$APPBUNDLE/Contents/Resources"
 mkdir "$APPBUNDLE/Contents/MacOS"
 cp /System/Library/Frameworks/JavaVM.framework/Versions/Current/Resources/MacOS/JavaApplicationStub "$APPBUNDLE/Contents/MacOS/JavaApplicationStub"
 chmod 755 "$APPBUNDLE/Contents/MacOS/JavaApplicationStub"
+
+# Sign application
+codesign -s "$SIGNATURE" --resource-rules src/main/macos/files/signature.plist -f -v "$APPBUNDLE"
+if [ $? -ne 0 ]; then
+    echo "Failed to sign package"
+    exit 1
+fi
+
+# Check signing
+codesign --verify -vvvv --no-strict "$APPBUNDLE"
+if [ $? -ne 0 ]; then
+    echo "Failed to verify signature"
+    exit 1
+fi
 
 #Make image
 src/main/macos/create-dmg --window-size 500 300 --icon-size 96  --volname "VCC Installer" --app-drop-link 380 205 --icon "Virtual Combat Cards" 110 205 --background src/main/macos/Resources/install-bg.tiff $IMAGE $BUILDIN 
